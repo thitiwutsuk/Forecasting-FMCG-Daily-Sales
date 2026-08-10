@@ -1,5 +1,14 @@
 # FMCG Weekly Sales Forecasting
 
+![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white)
+![pandas](https://img.shields.io/badge/pandas-150458?style=flat&logo=pandas&logoColor=white)
+![NumPy](https://img.shields.io/badge/NumPy-013243?style=flat&logo=numpy&logoColor=white)
+![scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=flat&logo=scikitlearn&logoColor=white)
+![LightGBM](https://img.shields.io/badge/LightGBM-3499CD?style=flat)
+![statsmodels](https://img.shields.io/badge/statsmodels-3776AB?style=flat)
+![Matplotlib](https://img.shields.io/badge/Matplotlib-11557C?style=flat&logo=matplotlib&logoColor=white)
+![Jupyter](https://img.shields.io/badge/Jupyter-F37626?style=flat&logo=jupyter&logoColor=white)
+
 A data science portfolio project on demand forecasting, promotion effectiveness, and cold-start
 forecasting for a simulated FMCG (Fast-Moving Consumer Goods) business selling across multiple
 channels and regions.
@@ -106,7 +115,8 @@ Full detail for each phase is in the project plan.
 
 ## Tech Stack
 
-pandas, numpy, scikit-learn, LightGBM, statsmodels / linearmodels, matplotlib, seaborn, joblib.
+pandas, numpy, scikit-learn, LightGBM, statsmodels / linearmodels, matplotlib, seaborn, joblib
+(badges at the top of this README).
 
 ## Repository Structure
 

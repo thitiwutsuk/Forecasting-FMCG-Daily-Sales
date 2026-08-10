@@ -107,10 +107,26 @@ Forecasting FMCG Daily Sales/
 └── tests/
 ```
 
-## Status
+## Progress
 
-Project scoping, planning, and repo scaffolding complete (Phase 0–1). Phase 2 (EDA) is next —
-see the phase table above for what's done and what's next.
+- [x] **Phase 0 — Business framing**: defined the business question and success metric for each of the 5 use cases — see Problem Statement above
+- [x] **Phase 1 — Repo & environment setup**: created the folder structure (`data/raw`, `data/interim`, `data/processed`, `notebooks`, `src/*`, `reports`, `tests`), moved raw data into `data/raw/`, added `requirements.txt`
+- [ ] **Phase 2 — EDA**: explore data distributions, check missingness/outliers, verify the daily→weekly roll-up, document data-quality issues
+- [ ] **Phase 3 — Data validation**: check for data leakage and schema correctness
+- [ ] **Phase 4 — Feature engineering**: fix the enrichment bug (weather/inflation), generalize enrichment to all 30 SKUs, add hypothesis-driven features
+- [ ] **Phase 5 — Split strategy**: design a panel-aware, time-respecting walk-forward CV scheme
+- [ ] **Phase 6 — Baseline models**: naive, seasonal naive, moving average
+- [ ] **Phase 7 — Core forecasting (use case 1)**: statistical model + global pooled LightGBM
+- [ ] **Phase 8 — Promotion effect (use case 2)**: two-way fixed-effects regression with confidence intervals
+- [ ] **Phase 9 — Seasonality & trend (use case 3)**: STL decomposition per category
+- [ ] **Phase 10 — Cold-start forecasting (use case 4)**: analog-based + meta-learner forecasting for new SKUs
+- [ ] **Phase 11 — Feature ablation study (use case 5)**: quantify the value each feature group adds to model accuracy
+- [ ] **Phase 12 — Model evaluation rollup**: consolidate all models into a single comparison table
+- [ ] **Phase 13 — Future holdout backtest**: test the model against real, never-seen January 2025 data
+- [ ] **Phase 14 — Communication deliverable**: produce `reports/final_report.md` with figures and business-framed findings
+- [ ] **Phase 15 — Documentation & polish**: finalize the README, docstrings, and tests
+
+**Working note**: notebooks in `notebooks/` include detailed Thai-language explanations of each step, so readers without a computer science background can follow along. The final report (`reports/final_report.md`) stays in English for a hiring-manager audience.
 
 ## Key Findings
 

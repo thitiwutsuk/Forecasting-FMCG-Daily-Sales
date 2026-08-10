@@ -42,25 +42,50 @@ before the enrichment pipeline is generalized to all 30 SKUs (see Methodology, P
 
 ## Methodology
 
-The project follows a standard data science lifecycle, organized into 16 phases (see
-`notebooks/`, numbered to match):
+The project follows a standard data science lifecycle. Each of the 16 phases below maps to a
+numbered notebook in `notebooks/` and belongs to one stage of that lifecycle:
 
+### 1. Business Understanding
 | Phase | Focus | Output |
 |---|---|---|
 | 0 | Business framing | Problem statement per use case, success metrics |
+
+### 2. Project Setup
+| Phase | Focus | Output |
+|---|---|---|
 | 1 | Repo & environment setup | Runnable project skeleton |
-| 2 | EDA | Data dictionary, distributions, data-quality notes |
+
+### 3. Data Understanding
+| Phase | Focus | Output |
+|---|---|---|
+| 2 | Exploratory data analysis (EDA) | Data dictionary, distributions, data-quality notes |
+
+### 4. Data Preparation
+| Phase | Focus | Output |
+|---|---|---|
 | 3 | Data validation | Leakage checks, schema/range checks |
 | 4 | Feature engineering | Enrichment bug fix, generalized to all 30 SKUs, hypothesis-driven features |
 | 5 | Split strategy | Panel-aware, time-respecting walk-forward CV |
+
+### 5. Modeling
+| Phase | Focus | Output |
+|---|---|---|
 | 6 | Baseline models | Naive, seasonal naive, moving average |
 | 7 | Core forecasting (use case 1) | Statistical model + global pooled LightGBM |
 | 8 | Promotion effect (use case 2) | Two-way fixed-effects regression with CIs |
 | 9 | Seasonality & trend (use case 3) | STL decomposition per category |
 | 10 | Cold-start forecasting (use case 4) | Analog-based + meta-learner approaches |
 | 11 | Feature ablation study (use case 5) | Quantified value of each feature group |
+
+### 6. Evaluation
+| Phase | Focus | Output |
+|---|---|---|
 | 12 | Model evaluation rollup | Final comparison table across all models |
 | 13 | Future holdout backtest | Simulated live scoring against Jan 2025 data |
+
+### 7. Deployment & Communication
+| Phase | Focus | Output |
+|---|---|---|
 | 14 | Communication deliverable | `reports/final_report.md` with figures |
 | 15 | Documentation & polish | Final README, docstrings, tests |
 
@@ -109,20 +134,43 @@ Forecasting FMCG Daily Sales/
 
 ## Progress
 
-- [x] **Phase 0 — Business framing**: defined the business question and success metric for each of the 5 use cases — see Problem Statement above
-- [x] **Phase 1 — Repo & environment setup**: created the folder structure (`data/raw`, `data/interim`, `data/processed`, `notebooks`, `src/*`, `reports`, `tests`), moved raw data into `data/raw/`, added `requirements.txt`
+### 1. Business Understanding
+- [x] **Phase 0 — Business framing**
+  - Framed each of the 5 use cases as a concrete business question (forecasting, promotions, seasonality, cold start, feature engineering)
+  - Defined a success metric per thread
+  - Documented in the Problem Statement section above
+
+### 2. Project Setup
+- [x] **Phase 1 — Repo & environment setup**
+  - Created the project folder structure: `data/{raw,interim,processed}`, `notebooks/`, `src/{data,features,splits,models,causal,viz}`, `reports/figures`, `tests/`
+  - Moved the original raw data files from `Data/` into `data/raw/` unchanged
+  - Added `requirements.txt` with the project's tooling (pandas, scikit-learn, LightGBM, statsmodels, linearmodels, etc.)
+  - Added `.vscode/settings.json` to hide `.venv/` from the file explorer and search
+  - Added `.claude/settings.json` with a permission allowlist for activating the project's `.venv`
+  - Initialized the git repo, made the initial commit, and connected it to the GitHub remote (`thitiwutsuk/Forecasting-FMCG-Daily-Sales`)
+  - Wrote the initial README (problem statement, data inventory, methodology, repo structure) and later translated it fully to English
+
+### 3. Data Understanding
 - [ ] **Phase 2 — EDA**: explore data distributions, check missingness/outliers, verify the daily→weekly roll-up, document data-quality issues
+
+### 4. Data Preparation
 - [ ] **Phase 3 — Data validation**: check for data leakage and schema correctness
 - [ ] **Phase 4 — Feature engineering**: fix the enrichment bug (weather/inflation), generalize enrichment to all 30 SKUs, add hypothesis-driven features
 - [ ] **Phase 5 — Split strategy**: design a panel-aware, time-respecting walk-forward CV scheme
+
+### 5. Modeling
 - [ ] **Phase 6 — Baseline models**: naive, seasonal naive, moving average
 - [ ] **Phase 7 — Core forecasting (use case 1)**: statistical model + global pooled LightGBM
 - [ ] **Phase 8 — Promotion effect (use case 2)**: two-way fixed-effects regression with confidence intervals
 - [ ] **Phase 9 — Seasonality & trend (use case 3)**: STL decomposition per category
 - [ ] **Phase 10 — Cold-start forecasting (use case 4)**: analog-based + meta-learner forecasting for new SKUs
 - [ ] **Phase 11 — Feature ablation study (use case 5)**: quantify the value each feature group adds to model accuracy
+
+### 6. Evaluation
 - [ ] **Phase 12 — Model evaluation rollup**: consolidate all models into a single comparison table
 - [ ] **Phase 13 — Future holdout backtest**: test the model against real, never-seen January 2025 data
+
+### 7. Deployment & Communication
 - [ ] **Phase 14 — Communication deliverable**: produce `reports/final_report.md` with figures and business-framed findings
 - [ ] **Phase 15 — Documentation & polish**: finalize the README, docstrings, and tests
 

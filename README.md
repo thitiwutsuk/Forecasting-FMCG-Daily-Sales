@@ -196,12 +196,34 @@ Forecasting FMCG Daily Sales/
   - Verified no train/validation row overlap, training always strictly precedes validation, and the final holdout is fully disjoint from CV — diagram saved to `reports/figures/phase5_walk_forward_scheme.png`
 
 ### 5. Modeling
-- [ ] **Phase 6 — Baseline models**: naive, seasonal naive, moving average
-- [ ] **Phase 7 — Core forecasting (use case 1)**: statistical model + global pooled LightGBM
-- [ ] **Phase 8 — Promotion effect (use case 2)**: two-way fixed-effects regression with confidence intervals
-- [ ] **Phase 9 — Seasonality & trend (use case 3)**: STL decomposition per category
-- [ ] **Phase 10 — Cold-start forecasting (use case 4)**: analog-based + meta-learner forecasting for new SKUs
-- [ ] **Phase 11 — Feature ablation study (use case 5)**: quantify the value each feature group adds to model accuracy
+- [x] **Phase 6 — Baseline models**
+  - Wrote `src/models/baseline.py` (naive/seasonal-naive/moving-average forecasters) and `src/models/metrics.py` (MAE, RMSE, WAPE, SMAPE)
+  - Evaluated on the Phase 5 walk-forward folds (`notebooks/06_baseline_models.ipynb`): Moving Average (4w) is the best baseline at **WAPE 0.243** (CV avg), ahead of Naive (0.304) and Seasonal Naive (0.356, and only computable for ~55% of rows since it needs 52 weeks of history)
+  - This sets the bar Phase 7's models must beat
+- [x] **Phase 7 — Core forecasting (use case 1)**
+  - Wrote `src/models/forecast.py`: global pooled LightGBM, local per-SKU LightGBM, shared categorical-encoding helpers
+  - Compared 4 model families on identical CV folds (`notebooks/07_core_forecasting.ipynb`): **Global pooled LightGBM wins at WAPE 0.224**, beating Local per-SKU LightGBM (0.256), the Moving Average baseline (0.243), and Holt-Winters ETS evaluated on the top-5 series (0.301 vs. 0.216 for LightGBM on that same subset)
+  - Confirms pooling across SKUs helps more than giving each SKU its own model, and that context features (price/promo/calendar) beat a pure univariate statistical model
+  - Global pooled LightGBM is the model carried into Phase 10, 11, and 13
+- [x] **Phase 8 — Promotion effect (use case 2)**
+  - Wrote `src/causal/promotion_effect.py`: two-way fixed-effects `PanelOLS` (SKU + week FE, controls for price/channel/region, log-linear so the coefficient converts to % uplift)
+  - Overall uplift (`notebooks/08_promotion_effect.ipynb`): **+28.4% [27.6%, 29.3%], p < 0.001**; by category it ranges ~27.8%–29.4%, all significant
+  - Found confounding is mild in this simulated dataset (price/channel/season barely differ by promotion status), so the FE-adjusted estimate lands close to the naive comparison — reported honestly rather than assuming strong confounding
+  - Handled Juice (1 SKU) as a documented edge case: entity FE and SKU-clustered SEs are undefined with a single cluster (confirmed via a `Singular matrix` error), so it falls back to time-effects-only with robust SEs
+- [x] **Phase 9 — Seasonality & trend (use case 3)**
+  - Ran per-category STL decomposition (period=52) on category-level weekly totals
+  - Seasonality dominates SnackBar (87%), ReadyMeal (76%), and Juice (73%) variance; trend dominates Milk (58% trend vs. 8% seasonal); Yogurt is mixed (53%/32%)
+  - Business read: SnackBar/ReadyMeal/Juice replenishment should weight the seasonal calendar heavily, while Milk planning should track growth trend instead
+- [x] **Phase 10 — Cold-start forecasting (use case 4)**
+  - Wrote `src/models/cold_start.py`: analog matching (category→segment→pack_type, nearest price) and a meta-learner (Phase 7 LightGBM restricted to non-history-dependent features)
+  - Held out the 5 genuinely latest-launching SKUs (`YO-024, MI-008, SN-028, YO-018, SN-030`) entirely from training
+  - Finding: contrary to the initial hypothesis, the **full model (with lag features) matched or beat the meta-learner at every age bucket**, because `weekly_features.csv` only ever contains rows with populated lag features (min `sku_age` = 4 everywhere), so true zero-history rows aren't present in this table — documented as a scope caveat rather than forcing the expected narrative
+  - What is clearly confirmed: both ML approaches beat the analog method by a wide margin at every age (~0.20–0.28 WAPE vs. ~0.27–0.39) — case for using the pooled model over simple similarity-matching for new SKUs
+- [x] **Phase 11 — Feature ablation study (use case 5)**
+  - Retrained the global LightGBM 7 times (once per CV fold) for each of 6 feature-group removals, on the same folds as every other modeling phase
+  - Ranked by WAPE increase when removed: **Calendar & lifecycle features matter most**, followed by lag/rolling (incl. current-week `units_sold`); promotion and operational features have a small effect; price and external enrichment show ~0 or slightly negative marginal effect (within CV noise, not evidence they hurt)
+  - Cross-validates the Phase 10 finding: lag/rolling features help less than expected once calendar/lifecycle/price/promo context is already present — demand in this dataset is driven more by systematic context than by pure autocorrelation
+  - Flagged the interpretation caveat explicitly: this measures marginal predictive value conditional on all other features, not standalone causal importance — promotion's low marginal WAPE impact here doesn't contradict Phase 8's +28% causal uplift finding; they answer different questions
 
 ### 6. Evaluation
 - [ ] **Phase 12 — Model evaluation rollup**: consolidate all models into a single comparison table
@@ -215,6 +237,8 @@ Forecasting FMCG Daily Sales/
 
 ## Key Findings
 
-_To be filled in as phases complete — headline results (forecast accuracy vs. baseline,
-promotion uplift estimate with confidence interval, cold-start accuracy curve) will be
-summarized here once available._
+- **Forecasting**: Global pooled LightGBM reaches **WAPE 0.224** on 7-fold walk-forward CV, beating the best baseline (Moving Avg 4w, 0.243), a local per-SKU LightGBM (0.256), and Holt-Winters ETS (0.301 on the same top-5-series subset where LightGBM scores 0.216)
+- **Promotions**: Two-way fixed-effects regression estimates a **+28.4% sales uplift [27.6%, 29.3%], p < 0.001**, consistent (~28–29%) across all 5 categories
+- **Seasonality**: Seasonal variance share ranges from 8% (Milk, trend-dominated) to 87% (SnackBar) — category-dependent, not a single "seasonality factor" for the business
+- **Cold start**: Both ML approaches (full model, meta-learner) clearly beat naive analog-matching at every SKU age; the full model held up from the first available week rather than needing a "catch-up" period, which the ablation study corroborates
+- **Feature value**: Calendar/lifecycle features matter most to predictive accuracy, ahead of lag/rolling sales history; price and external enrichment add close to nothing incrementally once other features are present — this is a predictive-value finding, distinct from promotion's causal effect above

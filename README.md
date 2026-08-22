@@ -149,92 +149,37 @@ Forecasting FMCG Daily Sales/
 └── tests/
 ```
 
-## Progress
+## Status
 
 ### 1. Business Understanding
-- [x] **Phase 0 — Business framing**
-  - Framed each of the 5 use cases as a concrete business question (forecasting, promotions, seasonality, cold start, feature engineering)
-  - Defined a success metric per thread
-  - Documented in the Problem Statement section above
+- [x] Phase 0 — Business framing (framed each of the 5 use cases — forecasting, promotions, seasonality, cold start, feature engineering — as a concrete business question with a success metric per thread; documented in the Problem Statement section above)
 
 ### 2. Project Setup
-- [x] **Phase 1 — Repo & environment setup**
-  - Created the project folder structure: `data/{raw,interim,processed}`, `notebooks/`, `src/{data,features,splits,models,causal,viz}`, `reports/figures`, `tests/`
-  - Moved the original raw data files from `Data/` into `data/raw/` unchanged
-  - Added `requirements.txt` with the project's tooling (pandas, scikit-learn, LightGBM, statsmodels, linearmodels, etc.)
-  - Added `.vscode/settings.json` to hide `.venv/` from the file explorer and search
-  - Added `.claude/settings.json` with a permission allowlist for activating the project's `.venv`
-  - Initialized the git repo, made the initial commit, and connected it to the GitHub remote (`thitiwutsuk/Forecasting-FMCG-Daily-Sales`)
-  - Wrote the initial README (problem statement, data inventory, methodology, repo structure) and later translated it fully to English
+- [x] Phase 1 — Repo & environment setup (created the project folder structure `data/{raw,interim,processed}`, `notebooks/`, `src/{data,features,splits,models,causal,viz}`, `reports/figures`, `tests/`; moved the original raw data from `Data/` into `data/raw/` unchanged; added `requirements.txt`, `.vscode/settings.json`, `.claude/settings.json`; initialized git and connected it to the GitHub remote `thitiwutsuk/Forecasting-FMCG-Daily-Sales`; wrote the README and later translated it fully to English)
 
 ### 3. Data Understanding
-- [x] **Phase 2 — EDA**
-  - Created `.venv` and installed `requirements.txt` (note: LightGBM fails to import on this macOS setup until `libomp` is installed via Homebrew — not needed until Phase 7, tracked as a known setup issue)
-  - Wrote `notebooks/02_eda.ipynb`: loaded and profiled all 4 data files (schema, dtypes, shape)
-  - Confirmed zero missing values across all files, but found 3 rows in `FMCG_2022_2024.csv` with simultaneous negative `units_sold`/`stock_available`/`delivered_qty` (SKUs SN-028, SN-010, RE-007) — flagged for Phase 3
-  - Plotted distributions of `units_sold`, `price_unit`, promotion rate by category, and channel sales split; saved figures to `reports/figures/`
-  - Verified the panel is complete (270 = 30 SKU × 3 channel × 3 region combos) but unbalanced, since SKUs launch on staggered dates — confirmed usable for Phase 10 cold-start
-  - Reverse-engineered and confirmed the daily→weekly roll-up convention (`W-MON`, `label='left'`, `closed='left'`) by recomputing it from `FMCG_2022_2024.csv` and diffing against `weekly_df_final_for_modeling.csv` across all 270 combos (31,027 weeks, 0 mismatches)
-  - Sanity-checked `target_next_week` against a manual `groupby().shift(-1)` — matched on every comparable row, no leakage found at this pass (full feature-level leakage check deferred to Phase 3)
-  - Confirmed the known `avg_temp`/`inflation_index` enrichment bug in `df_weekly_MI-006_enriched.csv` varies incorrectly by channel within the same week/region
-  - Confirmed the future holdout batches (`batch_MI-006_2025-01-*.parquet`) fall entirely after the training window, usable as a true backtest in Phase 13
+- [x] Phase 2 — EDA (wrote `notebooks/02_eda.ipynb` profiling all 4 data files; confirmed zero missing values but found 3 rows with simultaneous negative `units_sold`/`stock_available`/`delivered_qty` in `FMCG_2022_2024.csv` — flagged for Phase 3; plotted distributions and saved figures to `reports/figures/`; verified the panel is complete but unbalanced due to staggered SKU launches, usable for Phase 10 cold-start; confirmed the daily→weekly roll-up convention with 0 mismatches across all 31,027 weeks; sanity-checked `target_next_week` for leakage; confirmed the `avg_temp`/`inflation_index` channel bug and that the 2025 batch files are a valid future holdout for Phase 13)
 
 ### 4. Data Preparation
-- [x] **Phase 3 — Data validation**
-  - Wrote `src/data/validate.py`: reusable checks for duplicate keys, schema/range violations, the daily→weekly roll-up convention, and leakage in `target_next_week`, `lag_1`, `lag_2`, `rolling_mean_4`, `rolling_std_4`, and `momentum`
-  - Ran all checks in `notebooks/03_data_validation.ipynb`: confirmed zero duplicate rows, zero leakage across every derived feature (each verified against a `shift`-based recomputation over all 31,027 rows), and reconfirmed the roll-up convention from Phase 2
-  - Found the only failures were the 3 negative-value rows in `FMCG_2022_2024.csv` identified in Phase 2 (`units_sold`, `stock_available`, `delivered_qty` all negative on the same rows); the weekly modeling table was unaffected since same-week positive days absorbed them
-  - Decided to clip those values to 0 rather than drop the rows, to keep each SKU's daily time series contiguous ahead of the Phase 4 re-aggregation; re-ran all checks post-clip and confirmed 16/16 pass
-  - Saved the cleaned file to `data/interim/daily_validated.csv` as the input for Phase 4
-- [x] **Phase 4 — Feature engineering & enrichment generalization**
-  - Diagnosed the `avg_temp`/`inflation_index` channel-leakage bug quantitatively in `notebooks/04_feature_engineering.ipynb`: the within-week-across-channel noise (std ≈ 7-9 for temp, ≈ 44-46 for inflation) is larger than the true 3-year trend/seasonal range in the prototype file, so the original signal can't be recovered — regenerated both deterministically instead of patching
-  - Wrote `src/features/enrich.py`: regenerates `avg_temp` (region × week), `inflation_index` (week, national), `school_in_session` (week, calendar rule), `event_score` (week, Polish retail-holiday calendar), and `category_trend` (category × region × week, causal expanding index) — none depend on `channel`, since none plausibly should
-  - Verified `price_avg`, `promo_rate`, `stock_avg`, `deliveries` formulas against the MI-006 prototype (0 mismatches over 1,349 rows) before generalizing them to all 30 SKUs
-  - Confirmed the fix: std of `avg_temp`/`inflation_index` across channel within the same week/region is now exactly 0
-  - Wrote `src/features/engineer.py` adding 4 hypothesis-driven features — `price_index`, `promo_recency`, `rolling_promo_rate`, `cross_channel_demand_share` — each designed to use only same-or-past-week information (no leakage into `target_next_week`)
-  - Saved the final table to `data/processed/weekly_features.csv` (31,027 rows × 40 columns, all 30 SKUs, no duplicate keys)
-- [x] **Phase 5 — Split strategy**
-  - Wrote `src/splits/walk_forward.py`: a panel-aware `WalkForwardSplitter` that splits by `week` (never row index), so every sku-channel-region cell for a week stays on the same side of the split
-  - Scheme (`notebooks/05_split_strategy.ipynb`): initial training window 2022-02-14→2023-09-25 (85 weeks), 7 expanding-window validation folds through 2024-10-14 (8 weeks each), final untouched holdout = last 10 weeks of 2024 (2024-10-21→2024-12-23) for Phase 13 only
-  - Verified no train/validation row overlap, training always strictly precedes validation, and the final holdout is fully disjoint from CV — diagram saved to `reports/figures/phase5_walk_forward_scheme.png`
+- [x] Phase 3 — Data validation (wrote `src/data/validate.py` for duplicate/schema/leakage checks; ran all checks in `notebooks/03_data_validation.ipynb` confirming zero duplicate rows and zero leakage across every derived feature; clipped the 3 negative-value rows found in Phase 2 to 0 rather than dropping them, then re-ran all 16 checks and confirmed all pass; saved the cleaned file to `data/interim/daily_validated.csv`)
+- [x] Phase 4 — Feature engineering & enrichment generalization (diagnosed the `avg_temp`/`inflation_index` bug quantitatively — channel noise larger than the true 3-year signal — and regenerated both deterministically at the correct grain instead of patching; wrote `src/features/enrich.py` generalizing enrichment to all 30 SKUs; verified `price_avg`/`promo_rate`/`stock_avg`/`deliveries` against the MI-006 prototype with 0 mismatches; wrote `src/features/engineer.py` adding 4 hypothesis-driven features — `price_index`, `promo_recency`, `rolling_promo_rate`, `cross_channel_demand_share`; saved the final table to `data/processed/weekly_features.csv`, 31,027 rows × 40 columns)
+- [x] Phase 5 — Split strategy (wrote `src/splits/walk_forward.py`, a panel-aware `WalkForwardSplitter` that splits by week, never row index; scheme is an 85-week initial training window, 7 expanding-window validation folds through Oct 2024, and a final untouched 10-week holdout reserved for Phase 13; verified no train/validation overlap and saved the scheme diagram to `reports/figures/`)
 
 ### 5. Modeling
-- [x] **Phase 6 — Baseline models**
-  - Wrote `src/models/baseline.py` (naive/seasonal-naive/moving-average forecasters) and `src/models/metrics.py` (MAE, RMSE, WAPE, SMAPE)
-  - Evaluated on the Phase 5 walk-forward folds (`notebooks/06_baseline_models.ipynb`): Moving Average (4w) is the best baseline at **WAPE 0.243** (CV avg), ahead of Naive (0.304) and Seasonal Naive (0.356, and only computable for ~55% of rows since it needs 52 weeks of history)
-  - This sets the bar Phase 7's models must beat
-- [x] **Phase 7 — Core forecasting (use case 1)**
-  - Wrote `src/models/forecast.py`: global pooled LightGBM, local per-SKU LightGBM, shared categorical-encoding helpers
-  - Compared 4 model families on identical CV folds (`notebooks/07_core_forecasting.ipynb`): **Global pooled LightGBM wins at WAPE 0.224**, beating Local per-SKU LightGBM (0.256), the Moving Average baseline (0.243), and Holt-Winters ETS evaluated on the top-5 series (0.301 vs. 0.216 for LightGBM on that same subset)
-  - Confirms pooling across SKUs helps more than giving each SKU its own model, and that context features (price/promo/calendar) beat a pure univariate statistical model
-  - Global pooled LightGBM is the model carried into Phase 10, 11, and 13
-- [x] **Phase 8 — Promotion effect (use case 2)**
-  - Wrote `src/causal/promotion_effect.py`: two-way fixed-effects `PanelOLS` (SKU + week FE, controls for price/channel/region, log-linear so the coefficient converts to % uplift)
-  - Overall uplift (`notebooks/08_promotion_effect.ipynb`): **+28.4% [27.6%, 29.3%], p < 0.001**; by category it ranges ~27.8%–29.4%, all significant
-  - Found confounding is mild in this simulated dataset (price/channel/season barely differ by promotion status), so the FE-adjusted estimate lands close to the naive comparison — reported honestly rather than assuming strong confounding
-  - Handled Juice (1 SKU) as a documented edge case: entity FE and SKU-clustered SEs are undefined with a single cluster (confirmed via a `Singular matrix` error), so it falls back to time-effects-only with robust SEs
-- [x] **Phase 9 — Seasonality & trend (use case 3)**
-  - Ran per-category STL decomposition (period=52) on category-level weekly totals
-  - Seasonality dominates SnackBar (87%), ReadyMeal (76%), and Juice (73%) variance; trend dominates Milk (58% trend vs. 8% seasonal); Yogurt is mixed (53%/32%)
-  - Business read: SnackBar/ReadyMeal/Juice replenishment should weight the seasonal calendar heavily, while Milk planning should track growth trend instead
-- [x] **Phase 10 — Cold-start forecasting (use case 4)**
-  - Wrote `src/models/cold_start.py`: analog matching (category→segment→pack_type, nearest price) and a meta-learner (Phase 7 LightGBM restricted to non-history-dependent features)
-  - Held out the 5 genuinely latest-launching SKUs (`YO-024, MI-008, SN-028, YO-018, SN-030`) entirely from training
-  - Finding: contrary to the initial hypothesis, the **full model (with lag features) matched or beat the meta-learner at every age bucket**, because `weekly_features.csv` only ever contains rows with populated lag features (min `sku_age` = 4 everywhere), so true zero-history rows aren't present in this table — documented as a scope caveat rather than forcing the expected narrative
-  - What is clearly confirmed: both ML approaches beat the analog method by a wide margin at every age (~0.20–0.28 WAPE vs. ~0.27–0.39) — case for using the pooled model over simple similarity-matching for new SKUs
-- [x] **Phase 11 — Feature ablation study (use case 5)**
-  - Retrained the global LightGBM 7 times (once per CV fold) for each of 6 feature-group removals, on the same folds as every other modeling phase
-  - Ranked by WAPE increase when removed: **Calendar & lifecycle features matter most**, followed by lag/rolling (incl. current-week `units_sold`); promotion and operational features have a small effect; price and external enrichment show ~0 or slightly negative marginal effect (within CV noise, not evidence they hurt)
-  - Cross-validates the Phase 10 finding: lag/rolling features help less than expected once calendar/lifecycle/price/promo context is already present — demand in this dataset is driven more by systematic context than by pure autocorrelation
-  - Flagged the interpretation caveat explicitly: this measures marginal predictive value conditional on all other features, not standalone causal importance — promotion's low marginal WAPE impact here doesn't contradict Phase 8's +28% causal uplift finding; they answer different questions
+- [x] Phase 6 — Baseline models (wrote `src/models/baseline.py` and `src/models/metrics.py`; evaluated on the Phase 5 walk-forward folds — Moving Average (4w) is the best baseline at **WAPE 0.243**, ahead of Naive (0.304) and Seasonal Naive (0.356); sets the bar Phase 7 must beat)
+- [x] Phase 7 — Core forecasting, use case 1 (wrote `src/models/forecast.py`; compared 4 model families on identical CV folds — **global pooled LightGBM wins at WAPE 0.224**, beating local per-SKU LightGBM (0.256), the Moving Average baseline (0.243), and Holt-Winters ETS (0.301 vs. 0.216 for LightGBM on the same top-5-series subset); confirms pooling across SKUs beats per-SKU models; carried forward into Phase 10, 11, and 13)
+- [x] Phase 8 — Promotion effect, use case 2 (wrote `src/causal/promotion_effect.py`, a two-way fixed-effects `PanelOLS`; overall uplift **+28.4% [27.6%, 29.3%], p < 0.001**, consistent ~28–29% across all 5 categories; found confounding is mild in this simulated dataset; Juice handled as a documented single-cluster edge case)
+- [x] Phase 9 — Seasonality & trend, use case 3 (ran per-category STL decomposition; seasonality dominates SnackBar (87%), ReadyMeal (76%), and Juice (73%); trend dominates Milk (58% vs. 8% seasonal); Yogurt is mixed (53%/32%))
+- [x] Phase 10 — Cold-start forecasting, use case 4 (wrote `src/models/cold_start.py` with analog matching and a meta-learner; held out the 5 genuinely latest-launching SKUs entirely; found the full model matched or beat the meta-learner at every age bucket since true zero-history rows aren't present in the table — documented as a scope caveat; both ML approaches clearly beat analog matching at every age)
+- [x] Phase 11 — Feature ablation study, use case 5 (retrained the global LightGBM across every CV fold for each of 6 feature-group removals; calendar & lifecycle features matter most, followed by lag/rolling; promotion and operational features have a small effect; price and external enrichment show ~0 marginal effect; cross-validates the Phase 10 finding and is flagged as a predictive-value result, distinct from Phase 8's causal estimate)
 
 ### 6. Evaluation
-- [ ] **Phase 12 — Model evaluation rollup**: consolidate all models into a single comparison table
-- [ ] **Phase 13 — Future holdout backtest**: test the model against real, never-seen January 2025 data
+- [ ] Phase 12 — Model evaluation rollup (consolidate all models into a single comparison table)
+- [ ] Phase 13 — Future holdout backtest (test the model against real, never-seen January 2025 data)
 
 ### 7. Deployment & Communication
-- [ ] **Phase 14 — Communication deliverable**: produce `reports/final_report.md` with figures and business-framed findings
-- [ ] **Phase 15 — Documentation & polish**: finalize the README, docstrings, and tests
+- [ ] Phase 14 — Communication deliverable (produce `reports/final_report.md` with figures and business-framed findings)
+- [ ] Phase 15 — Documentation & polish (finalize the README, docstrings, and tests)
 
 **Working note**: notebooks in `notebooks/` include detailed Thai-language explanations of each step, so readers without a computer science background can follow along. The final report (`reports/final_report.md`) stays in English for a hiring-manager audience.
 

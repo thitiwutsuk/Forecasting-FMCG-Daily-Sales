@@ -152,34 +152,90 @@ Forecasting FMCG Daily Sales/
 ## Status
 
 ### 1. Business Understanding
-- [x] Phase 0 — Business framing (framed each of the 5 use cases — forecasting, promotions, seasonality, cold start, feature engineering — as a concrete business question with a success metric per thread; documented in the Problem Statement section above)
+- [x] **Phase 0 — Business framing**
+  - Turned all 5 use cases into plain business questions: forecasting, promotions, seasonality, new products, and feature value
+  - Set a clear way to measure success for each one
+  - Written up in the Problem Statement section above
 
 ### 2. Project Setup
-- [x] Phase 1 — Repo & environment setup (created the project folder structure `data/{raw,interim,processed}`, `notebooks/`, `src/{data,features,splits,models,causal,viz}`, `reports/figures`, `tests/`; moved the original raw data from `Data/` into `data/raw/` unchanged; added `requirements.txt`, `.vscode/settings.json`, `.claude/settings.json`; initialized git and connected it to the GitHub remote `thitiwutsuk/Forecasting-FMCG-Daily-Sales`; wrote the README and later translated it fully to English)
+- [x] **Phase 1 — Repo & environment setup**
+  - Set up the project folders: raw/interim/processed data, notebooks, reusable code, reports, tests
+  - Moved the original data files into `data/raw/` without changing them
+  - Added the tools list (`requirements.txt`) and editor/permission settings
+  - Connected the project to GitHub
+  - Wrote the README and later translated it fully into English
 
 ### 3. Data Understanding
-- [x] Phase 2 — EDA (wrote `notebooks/02_eda.ipynb` profiling all 4 data files; confirmed zero missing values but found 3 rows with simultaneous negative `units_sold`/`stock_available`/`delivered_qty` in `FMCG_2022_2024.csv` — flagged for Phase 3; plotted distributions and saved figures to `reports/figures/`; verified the panel is complete but unbalanced due to staggered SKU launches, usable for Phase 10 cold-start; confirmed the daily→weekly roll-up convention with 0 mismatches across all 31,027 weeks; sanity-checked `target_next_week` for leakage; confirmed the `avg_temp`/`inflation_index` channel bug and that the 2025 batch files are a valid future holdout for Phase 13)
+- [x] **Phase 2 — EDA (exploring the data)**
+  - Looked through all 4 data files to understand what's really in them
+  - Found no missing values, but caught 3 rows with impossible negative numbers — flagged for cleanup
+  - Made charts of sales, price, and promotions and saved them for later use
+  - Confirmed products launch on different dates, which is useful for testing new-product forecasts later
+  - Double-checked that weekly totals match the daily data exactly, no mismatches at all
+  - Checked that "next week's sales" (what the model predicts) never accidentally leaks into today's data
+  - Confirmed a known bug where weather and inflation numbers wrongly change depending on sales channel
+  - Confirmed the January 2025 data is genuinely unseen and safe to use as a final real-world test later
 
 ### 4. Data Preparation
-- [x] Phase 3 — Data validation (wrote `src/data/validate.py` for duplicate/schema/leakage checks; ran all checks in `notebooks/03_data_validation.ipynb` confirming zero duplicate rows and zero leakage across every derived feature; clipped the 3 negative-value rows found in Phase 2 to 0 rather than dropping them, then re-ran all 16 checks and confirmed all pass; saved the cleaned file to `data/interim/daily_validated.csv`)
-- [x] Phase 4 — Feature engineering & enrichment generalization (diagnosed the `avg_temp`/`inflation_index` bug quantitatively — channel noise larger than the true 3-year signal — and regenerated both deterministically at the correct grain instead of patching; wrote `src/features/enrich.py` generalizing enrichment to all 30 SKUs; verified `price_avg`/`promo_rate`/`stock_avg`/`deliveries` against the MI-006 prototype with 0 mismatches; wrote `src/features/engineer.py` adding 4 hypothesis-driven features — `price_index`, `promo_recency`, `rolling_promo_rate`, `cross_channel_demand_share`; saved the final table to `data/processed/weekly_features.csv`, 31,027 rows × 40 columns)
-- [x] Phase 5 — Split strategy (wrote `src/splits/walk_forward.py`, a panel-aware `WalkForwardSplitter` that splits by week, never row index; scheme is an 85-week initial training window, 7 expanding-window validation folds through Oct 2024, and a final untouched 10-week holdout reserved for Phase 13; verified no train/validation overlap and saved the scheme diagram to `reports/figures/`)
+- [x] **Phase 3 — Data validation**
+  - Wrote reusable checks for duplicate rows, bad values, and data leakage
+  - Ran every check — found no duplicates and no leakage anywhere
+  - Fixed the 3 negative-value rows found in Phase 2 by setting them to 0 instead of deleting them
+  - Saved the cleaned data as a new file, ready for the next step
+- [x] **Phase 4 — Feature engineering & fixing the enrichment bug**
+  - Figured out exactly why the weather/inflation numbers were wrong, then rebuilt them correctly instead of just patching over the bug
+  - Extended this fix to all 30 products (previously this data only existed for 1 product)
+  - Double-checked the rebuilt numbers against the original working example — found zero mismatches
+  - Added 4 new, purpose-built features: relative price vs. category average, time since last promotion, rolling promotion rate, and cross-channel sales share
+  - Saved the final, model-ready data table
+- [x] **Phase 5 — Split strategy**
+  - Built a custom way to split the data by time (never randomly), so no model ever "sees the future" by accident
+  - Set up a training period, 7 rounds of validation through 2024, and one final untouched test set saved for later
+  - Verified there is zero overlap between what the model trains on and what it's tested on
 
 ### 5. Modeling
-- [x] Phase 6 — Baseline models (wrote `src/models/baseline.py` and `src/models/metrics.py`; evaluated on the Phase 5 walk-forward folds — Moving Average (4w) is the best baseline at **WAPE 0.243**, ahead of Naive (0.304) and Seasonal Naive (0.356); sets the bar Phase 7 must beat)
-- [x] Phase 7 — Core forecasting, use case 1 (wrote `src/models/forecast.py`; compared 4 model families on identical CV folds — **global pooled LightGBM wins at WAPE 0.224**, beating local per-SKU LightGBM (0.256), the Moving Average baseline (0.243), and Holt-Winters ETS (0.301 vs. 0.216 for LightGBM on the same top-5-series subset); confirms pooling across SKUs beats per-SKU models; carried forward into Phase 10, 11, and 13)
-- [x] Phase 8 — Promotion effect, use case 2 (wrote `src/causal/promotion_effect.py`, a two-way fixed-effects `PanelOLS`; overall uplift **+28.4% [27.6%, 29.3%], p < 0.001**, consistent ~28–29% across all 5 categories; found confounding is mild in this simulated dataset; Juice handled as a documented single-cluster edge case)
-- [x] Phase 9 — Seasonality & trend, use case 3 (ran per-category STL decomposition; seasonality dominates SnackBar (87%), ReadyMeal (76%), and Juice (73%); trend dominates Milk (58% vs. 8% seasonal); Yogurt is mixed (53%/32%))
-- [x] Phase 10 — Cold-start forecasting, use case 4 (wrote `src/models/cold_start.py` with analog matching and a meta-learner; held out the 5 genuinely latest-launching SKUs entirely; found the full model matched or beat the meta-learner at every age bucket since true zero-history rows aren't present in the table — documented as a scope caveat; both ML approaches clearly beat analog matching at every age)
-- [x] Phase 11 — Feature ablation study, use case 5 (retrained the global LightGBM across every CV fold for each of 6 feature-group removals; calendar & lifecycle features matter most, followed by lag/rolling; promotion and operational features have a small effect; price and external enrichment show ~0 marginal effect; cross-validates the Phase 10 finding and is flagged as a predictive-value result, distinct from Phase 8's causal estimate)
+- [x] **Phase 6 — Baseline models**
+  - Built simple "dumb" forecasts to set a fair bar: guess last week's number, or the last 4-week average
+  - The 4-week average was the best simple guess, with a forecast error of about 24.3%
+  - This number is the target every real model has to beat
+- [x] **Phase 7 — Core forecasting (use case 1)**
+  - Trained and compared 4 different forecasting approaches on the exact same test weeks
+  - One shared model, trained on all 30 products together, won — cutting the forecast error to about 22.4%
+  - It beat a model trained separately per product, the simple baseline, and a classical statistics-based model
+  - Key takeaway: one model that learns from every product does better than giving each product its own model
+  - This is now the main model carried forward into later phases
+- [x] **Phase 8 — Promotion effect (use case 2)**
+  - Used a statistical technique that isolates the true effect of promotions from other things that change at the same time, like price or the season
+  - Found promotions genuinely lift sales by about 28.4%, with a reliable confidence range of 27.6%–29.3%
+  - This effect size is similar (~28–29%) across every product category
+  - One product category (Juice, with only 1 SKU) needed a slightly different statistical setup, handled and documented separately
+- [x] **Phase 9 — Seasonality & trend (use case 3)**
+  - Split each category's sales pattern into 3 parts: long-term trend, repeating seasonal pattern, and random noise
+  - Some categories (like Snacks) are driven almost entirely by season (87%); others (like Milk) are driven mostly by long-term growth instead (58%)
+  - Takeaway: different product categories need different planning approaches — season-driven vs. growth-driven
+- [x] **Phase 10 — Cold-start forecasting (use case 4)**
+  - Tested 2 ways to forecast a brand-new product with no sales history: find similar existing products, or use the main model without needing past sales data
+  - Held out the 5 genuinely newest products completely and tested both methods against them
+  - Both smarter methods clearly beat simple guessing at every stage of a product's early life
+  - One early assumption turned out to be wrong once tested — documented that finding honestly instead of forcing the expected result
+- [x] **Phase 11 — Feature ablation study (use case 5)**
+  - Retrained the model repeatedly, each time removing one group of features, to see what actually matters
+  - Calendar and product-lifecycle information mattered the most
+  - Past sales history mattered less than expected once other context was already included
+  - Price and the external weather/inflation data added almost nothing extra
+  - This answers a different question from Phase 8: this measures prediction accuracy, Phase 8 measures true cause-and-effect
 
 ### 6. Evaluation
-- [ ] Phase 12 — Model evaluation rollup (consolidate all models into a single comparison table)
-- [ ] Phase 13 — Future holdout backtest (test the model against real, never-seen January 2025 data)
+- [ ] **Phase 12 — Model evaluation rollup**
+  - Bring every model's results from Phase 6-11 together into one clean comparison table
+- [ ] **Phase 13 — Future holdout backtest**
+  - Test the final model against real January 2025 data it has never seen before
 
 ### 7. Deployment & Communication
-- [ ] Phase 14 — Communication deliverable (produce `reports/final_report.md` with figures and business-framed findings)
-- [ ] Phase 15 — Documentation & polish (finalize the README, docstrings, and tests)
+- [ ] **Phase 14 — Communication deliverable**
+  - Write up all the findings in plain business language with supporting charts
+- [ ] **Phase 15 — Documentation & polish**
+  - Finish the README, code comments, and tests so the project is easy for anyone to pick up
 
 **Working note**: notebooks in `notebooks/` include detailed Thai-language explanations of each step, so readers without a computer science background can follow along. The final report (`reports/final_report.md`) stays in English for a hiring-manager audience.
 

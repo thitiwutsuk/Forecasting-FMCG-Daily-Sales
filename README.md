@@ -36,25 +36,42 @@ back-tested models and a written analysis with business-interpretable results.
 
 ## Data
 
+The weekly modeling table is **built entirely from the raw daily transactions**, not received
+pre-aggregated — `src/data/build_weekly_base.py` reproduces the daily→weekly roll-up, all lag/rolling/
+target features, and every calendar/lifecycle feature from `FMCG_2022_2024.csv` alone. Two files
+that originally arrived pre-aggregated (see below) are kept only as a reference point, moved to
+`data/raw/given_reference/` and no longer read by the pipeline.
+
 | File | Grain | Rows | Description |
 |---|---|---|---|
-| `data/raw/FMCG_2022_2024.csv` | sku × channel × region × date (daily) | 190,758 | Raw daily transactions, Jan 2022–Dec 2024 |
-| `data/raw/weekly_df_final_for_modeling.csv` | sku × channel × region × week | 31,027 | Main weekly modeling table with lag/rolling/calendar features and the `target_next_week` label |
-| `data/raw/df_weekly_MI-006_enriched.csv` | sku × channel × region × week (MI-006 only) | 1,349 | Prototype enrichment with weather, inflation, school calendar, category trend, and event score |
+| `data/raw/FMCG_2022_2024.csv` | sku × channel × region × date (daily) | 190,758 | Raw daily transactions, Jan 2022–Dec 2024 — the only truly raw input to the pipeline |
 | `data/raw/batch_MI-006_2025-01-*.parquet` | daily, MI-006 only | 4 files, ~135 rows each | January 2025 data, after the training window — used as a true future holdout |
 | `data/interim/daily_validated.csv` | sku × channel × region × date (daily) | 190,758 | Phase 3 output: raw daily data with the 3 negative-value rows clipped to 0 |
-| `data/processed/weekly_features.csv` | sku × channel × region × week | 31,027 | Phase 4 output: final modeling table — validated core features + regenerated enrichment (all 30 SKUs) + hypothesis-driven features |
+| `data/processed/weekly_features.csv` | sku × channel × region × week | 31,027 | Phase 4 output: self-built weekly base (`build_weekly_base.py`) + regenerated enrichment (all 30 SKUs) + hypothesis-driven features |
+| `data/raw/given_reference/weekly_df_final_for_modeling.csv` | sku × channel × region × week | 31,027 | **Reference only, not used by the pipeline.** The originally-given weekly table — every one of its columns was reverse-derived and verified against this file (0 mismatches, except two intentionally-redefined columns — see below) before the pipeline stopped depending on it |
+| `data/raw/given_reference/df_weekly_MI-006_enriched.csv` | sku × channel × region × week (MI-006 only) | 1,349 | **Reference only.** Prototype enrichment with weather, inflation, school calendar, category trend, and event score — the source of the enrichment bug described below |
 
 **30 SKUs** across 5 categories: Yogurt (11), Milk (7), Snack (6), ReadyMeal (5), Juice (1), sold
 through 3 channels (Discount, E-commerce, Retail) and 3 regions (PL-Central, PL-North, PL-South).
 SKUs launch on staggered real dates between Feb 2022 and Jun 2023, which this project uses as
 naturally-occurring cold-start cases rather than synthetic ones.
 
-**Known data quality issue (fixed in Phase 4):** in the MI-006 enrichment prototype, `avg_temp`
-and `inflation_index` incorrectly varied by sales channel within the same week/region. The
-channel-level noise turned out to be larger than the true 3-year trend/seasonal signal, so both
-were regenerated deterministically at the correct grain (region×week / week) rather than patched,
-and the enrichment pipeline was generalized to all 30 SKUs — see `notebooks/04_feature_engineering.ipynb`.
+**Known data quality issues found while reverse-deriving the base table, fixed rather than copied:**
+- `avg_temp`/`inflation_index` (MI-006 enrichment prototype) incorrectly varied by sales channel
+  within the same week/region. The channel-level noise was larger than the true 3-year trend/
+  seasonal signal, so both were regenerated deterministically at the correct grain (region×week /
+  week) instead of patched, and generalized to all 30 SKUs — see `notebooks/04_feature_engineering.ipynb`.
+- `is_holiday_week`/`is_holiday_peak` in the originally-given table follow no reconstructible rule —
+  several Polish-holiday-calendar hypotheses (date offsets, multi-week windows) were tested and none
+  reached more than ~95% agreement, with a mismatch pattern that doesn't fit a simple date shift
+  (e.g. the week containing Easter Sunday itself isn't flagged, while an unrelated week is). Rather
+  than chase an apparently-buggy original, these two columns are derived from a correct Polish
+  public-holiday calendar instead — see `src/data/build_weekly_base.py`.
+- `sku_age` must be anchored to a SKU's overall first sale across *all* channels/regions, not to
+  each `(sku, channel, region)` group's own first sale — 14/270 groups start selling one or more
+  weeks after their SKU's true launch elsewhere, which silently miscomputes age (and the
+  `lifecycle_stage` bucket derived from it) if anchored per-group. Found and fixed during
+  development; verified 0 mismatches against the given table afterward.
 
 ## Methodology
 
@@ -119,11 +136,17 @@ Full detail for each phase is in the project plan.
   launch time).
 - **Metrics**: WAPE and SMAPE are used alongside MAE/RMSE, since MAPE is unstable for
   low-volume SKU-weeks.
+- **Base table provenance**: the weekly modeling table is built from raw daily transactions by
+  this project's own code (`src/data/build_weekly_base.py`), not received pre-aggregated — every
+  derivation rule was verified against the originally-given table (0 mismatches) before that file
+  was retired to `data/raw/given_reference/`. Re-running Phases 4-11 on this independently-built
+  base reproduced the same headline results (WAPE, uplift %, seasonality shares) as the original
+  run, which is itself a robustness check on those findings.
 
 ## Tech Stack
 
-pandas, numpy, scikit-learn, LightGBM, statsmodels / linearmodels, matplotlib, seaborn, joblib
-(badges at the top of this README).
+pandas, numpy, scikit-learn, LightGBM, statsmodels / linearmodels, matplotlib, seaborn, joblib,
+pytest (badges at the top of this README).
 
 ## Repository Structure
 
@@ -132,12 +155,13 @@ Forecasting FMCG Daily Sales/
 ├── README.md
 ├── requirements.txt
 ├── data/
-│   ├── raw/            # original data, untouched
+│   ├── raw/            # only the true raw input, untouched
+│   │   └── given_reference/  # originally-given weekly tables — kept for comparison, unused by the pipeline
 │   ├── interim/         # validated/cleaned intermediate tables
 │   └── processed/       # final modeling-ready feature tables
 ├── notebooks/           # numbered, one per phase
 ├── src/
-│   ├── data/            # loading + validation
+│   ├── data/            # loading + validation + self-built weekly base table
 │   ├── features/        # feature-engineering functions
 │   ├── splits/           # walk-forward / panel-aware CV
 │   ├── models/           # baseline, LightGBM, statsmodels wrappers
@@ -182,12 +206,15 @@ Forecasting FMCG Daily Sales/
   - Ran every check — found no duplicates and no leakage anywhere
   - Fixed the 3 negative-value rows found in Phase 2 by setting them to 0 instead of deleting them
   - Saved the cleaned data as a new file, ready for the next step
-- [x] **Phase 4 — Feature engineering & fixing the enrichment bug**
+- [x] **Phase 4 — Build the weekly base table from scratch, fix the enrichment bug, add new features**
+  - Rebuilt the entire weekly modeling table from the raw daily transactions ourselves, instead of using the version that was originally handed over already aggregated — every column (lag/rolling stats, next-week target, calendar flags, product lifecycle stage) was reverse-derived and checked against the original file until it matched exactly
+  - Found and fixed a real bug along the way: a product's "age" needs to be counted from when it was first sold anywhere, not separately for every store/channel combination — some products started selling in a given channel weeks after their true launch elsewhere, which threw the numbering off if counted the wrong way
+  - Also found that the "is this a holiday week" flag in the original file didn't follow any consistent pattern we could reconstruct (weeks around real holidays were sometimes missed while unrelated weeks were flagged) — so this was rebuilt from a correct public holiday calendar instead of copying whatever the original did
   - Figured out exactly why the weather/inflation numbers were wrong, then rebuilt them correctly instead of just patching over the bug
   - Extended this fix to all 30 products (previously this data only existed for 1 product)
-  - Double-checked the rebuilt numbers against the original working example — found zero mismatches
   - Added 4 new, purpose-built features: relative price vs. category average, time since last promotion, rolling promotion rate, and cross-channel sales share
-  - Saved the final, model-ready data table
+  - Saved the final, model-ready data table — kept the original given files for reference only, no longer used to build anything
+  - Added automated tests (`tests/test_build_weekly_base.py`, run with `pytest`) that lock in the derivation rules above, so a future code change can't silently drift from them
 - [x] **Phase 5 — Split strategy**
   - Built a custom way to split the data by time (never randomly), so no model ever "sees the future" by accident
   - Set up a training period, 7 rounds of validation through 2024, and one final untouched test set saved for later
@@ -241,8 +268,13 @@ Forecasting FMCG Daily Sales/
 
 ## Key Findings
 
-- **Forecasting**: Global pooled LightGBM reaches **WAPE 0.224** on 7-fold walk-forward CV, beating the best baseline (Moving Avg 4w, 0.243), a local per-SKU LightGBM (0.256), and Holt-Winters ETS (0.301 on the same top-5-series subset where LightGBM scores 0.216)
+- **Forecasting**: Global pooled LightGBM reaches **WAPE 0.224** on 7-fold walk-forward CV, beating the best baseline (Moving Avg 4w, 0.243), a local per-SKU LightGBM (0.257), and Holt-Winters ETS (0.301 on the same top-5-series subset where LightGBM scores 0.214)
 - **Promotions**: Two-way fixed-effects regression estimates a **+28.4% sales uplift [27.6%, 29.3%], p < 0.001**, consistent (~28–29%) across all 5 categories
 - **Seasonality**: Seasonal variance share ranges from 8% (Milk, trend-dominated) to 87% (SnackBar) — category-dependent, not a single "seasonality factor" for the business
 - **Cold start**: Both ML approaches (full model, meta-learner) clearly beat naive analog-matching at every SKU age; the full model held up from the first available week rather than needing a "catch-up" period, which the ablation study corroborates
 - **Feature value**: Calendar/lifecycle features matter most to predictive accuracy, ahead of lag/rolling sales history; price and external enrichment add close to nothing incrementally once other features are present — this is a predictive-value finding, distinct from promotion's causal effect above
+
+All five findings above were reproduced by re-running Phases 4-11 end-to-end on a weekly base
+table built independently from raw daily data (see Data section) — every number matched the
+original run to within rounding, which is itself evidence these results aren't an artifact of
+one particular way of assembling the modeling table.

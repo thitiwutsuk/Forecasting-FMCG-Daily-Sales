@@ -9,3 +9,4 @@ seaborn
 pyarrow
 joblib
 jupyter
+pytest

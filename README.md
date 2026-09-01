@@ -50,6 +50,10 @@ cases rather than synthetic ones.
 the given files):
 - `avg_temp`/`inflation_index` varied by sales channel — physically implausible, and noisier than
   the true 3-year signal. Regenerated deterministically at the correct grain (region×week / week).
+  **Note:** the regenerated values are synthetic, seeded stand-ins (not real weather/inflation
+  records) — appropriate for this simulated dataset, but a "no incremental value" finding on these
+  columns (Phase 11) is about these specific proxies, not a claim that real external data wouldn't
+  help actual demand planning.
 - `is_holiday_week`/`is_holiday_peak` follow no reconstructible rule in the given table (best
   achievable match against several Polish-holiday hypotheses: ~95%, with an inconsistent
   mismatch pattern). Redefined from a correct Polish public-holiday calendar instead.
@@ -155,7 +159,7 @@ readers. `reports/final_report.md` stays in English for a hiring-manager audienc
 - **Promotions**: **+28.4% sales uplift [27.6%, 29.3%], p < 0.001**, consistent across all 5 categories
 - **Seasonality**: variance share ranges from 8% (Milk, trend-dominated) to 87% (SnackBar) — category-dependent, not a single business-wide factor
 - **Cold start**: both ML approaches clearly beat naive analog-matching at every SKU age; the full model held up from the first available week
-- **Feature value**: calendar/lifecycle features matter most, ahead of lag/rolling history; price and external enrichment add close to nothing incrementally — a predictive-value finding, distinct from promotion's causal effect above
+- **Feature value**: calendar/lifecycle features matter most, ahead of lag/rolling history; price and external enrichment add close to nothing incrementally — a predictive-value finding, distinct from promotion's causal effect above. Caveat: `avg_temp`/`inflation_index` are synthetic, deterministic stand-ins (see Data), not real weather/inflation records, and are largely redundant with `month`/`is_summer`/`is_winter` already in the model — so this result shows those *specific proxies* add nothing here, not that real external data wouldn't help actual FMCG demand planning
 
 Every finding above was reproduced by re-running Phases 4–11 on an independently rebuilt weekly
 base table (see Data), with every headline number matching the original run within rounding.

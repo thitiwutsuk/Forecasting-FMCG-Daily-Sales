@@ -1,4 +1,5 @@
-"""Core forecasting models (Phase 7): global pooled LightGBM, local per-SKU LightGBM.
+"""Core forecasting models (Phase 7): global pooled LightGBM, local per-SKU LightGBM,
+global pooled XGBoost.
 
 Feature/label split is centralized here so Phase 10 (cold-start) and Phase 11
 (ablation) reuse the exact same column bookkeeping instead of redefining it.
@@ -7,6 +8,7 @@ Feature/label split is centralized here so Phase 10 (cold-start) and Phase 11
 import lightgbm as lgb
 import numpy as np
 import pandas as pd
+import xgboost as xgb
 
 TARGET = "target_next_week"
 
@@ -106,6 +108,51 @@ def predict_lgb(model: lgb.LGBMRegressor, df: pd.DataFrame, feature_cols: list =
     feature_cols = feature_cols or ALL_FEATURE_COLS
     X = make_lgb_frame(df, feature_cols)
     return model.predict(X)
+
+
+DEFAULT_XGB_PARAMS = dict(
+    objective="reg:absoluteerror",
+    n_estimators=300,
+    learning_rate=0.05,
+    max_depth=6,
+    min_child_weight=20,
+    tree_method="hist",
+    enable_categorical=True,
+    random_state=42,
+)
+
+
+def fit_predict_xgb(
+    train_df: pd.DataFrame,
+    val_df: pd.DataFrame,
+    feature_cols: list = None,
+    params: dict = None,
+) -> np.ndarray:
+    """Train one XGBoost regressor on train_df, return predictions for val_df.
+
+    Mirrors fit_predict_lgb: same feature/categorical handling (native categorical
+    support via enable_categorical, no one-hot), same global-pooled training scheme.
+    """
+    feature_cols = feature_cols or ALL_FEATURE_COLS
+    params = {**DEFAULT_XGB_PARAMS, **(params or {})}
+
+    X_train = make_lgb_frame(train_df, feature_cols)
+    y_train = train_df[TARGET].values
+    X_val = make_lgb_frame(val_df, feature_cols)
+
+    model = xgb.XGBRegressor(**params)
+    model.fit(X_train, y_train)
+    return model.predict(X_val)
+
+
+def fit_xgb(train_df: pd.DataFrame, feature_cols: list = None, params: dict = None) -> xgb.XGBRegressor:
+    feature_cols = feature_cols or ALL_FEATURE_COLS
+    params = {**DEFAULT_XGB_PARAMS, **(params or {})}
+    X_train = make_lgb_frame(train_df, feature_cols)
+    y_train = train_df[TARGET].values
+    model = xgb.XGBRegressor(**params)
+    model.fit(X_train, y_train)
+    return model
 
 
 def fit_predict_local_per_sku(train_df: pd.DataFrame, val_df: pd.DataFrame, feature_cols: list = None) -> np.ndarray:

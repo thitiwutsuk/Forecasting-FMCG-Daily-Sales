@@ -5,6 +5,8 @@ Feature/label split is centralized here so Phase 10 (cold-start) and Phase 11
 (ablation) reuse the exact same column bookkeeping instead of redefining it.
 """
 
+from typing import Optional
+
 import lightgbm as lgb
 import numpy as np
 import pandas as pd
@@ -64,8 +66,12 @@ def make_lgb_frame(df: pd.DataFrame, feature_cols: list) -> pd.DataFrame:
 
 
 DEFAULT_LGB_PARAMS = dict(
+    # objective="regression" trains on L2 (squared error), not the WAPE-aligned L1
+    # loss its name might suggest. We don't pass eval_set to .fit(), so a metric=
+    # kwarg here would be inert (LightGBM only logs it against a held-out eval_set).
+    # The XGBoost model below trains directly on reg:absoluteerror (true L1) as a
+    # cross-check that the L2-trained LightGBM isn't materially worse on MAE/WAPE.
     objective="regression",
-    metric="mae",
     n_estimators=300,
     learning_rate=0.05,
     num_leaves=31,
@@ -78,8 +84,8 @@ DEFAULT_LGB_PARAMS = dict(
 def fit_predict_lgb(
     train_df: pd.DataFrame,
     val_df: pd.DataFrame,
-    feature_cols: list = None,
-    params: dict = None,
+    feature_cols: Optional[list] = None,
+    params: Optional[dict] = None,
 ) -> np.ndarray:
     """Train one LightGBM regressor on train_df, return predictions for val_df."""
     feature_cols = feature_cols or ALL_FEATURE_COLS
@@ -94,7 +100,7 @@ def fit_predict_lgb(
     return model.predict(X_val)
 
 
-def fit_lgb(train_df: pd.DataFrame, feature_cols: list = None, params: dict = None) -> lgb.LGBMRegressor:
+def fit_lgb(train_df: pd.DataFrame, feature_cols: Optional[list] = None, params: Optional[dict] = None) -> lgb.LGBMRegressor:
     feature_cols = feature_cols or ALL_FEATURE_COLS
     params = {**DEFAULT_LGB_PARAMS, **(params or {})}
     X_train = make_lgb_frame(train_df, feature_cols)
@@ -104,7 +110,7 @@ def fit_lgb(train_df: pd.DataFrame, feature_cols: list = None, params: dict = No
     return model
 
 
-def predict_lgb(model: lgb.LGBMRegressor, df: pd.DataFrame, feature_cols: list = None) -> np.ndarray:
+def predict_lgb(model: lgb.LGBMRegressor, df: pd.DataFrame, feature_cols: Optional[list] = None) -> np.ndarray:
     feature_cols = feature_cols or ALL_FEATURE_COLS
     X = make_lgb_frame(df, feature_cols)
     return model.predict(X)
@@ -125,8 +131,8 @@ DEFAULT_XGB_PARAMS = dict(
 def fit_predict_xgb(
     train_df: pd.DataFrame,
     val_df: pd.DataFrame,
-    feature_cols: list = None,
-    params: dict = None,
+    feature_cols: Optional[list] = None,
+    params: Optional[dict] = None,
 ) -> np.ndarray:
     """Train one XGBoost regressor on train_df, return predictions for val_df.
 
@@ -145,7 +151,7 @@ def fit_predict_xgb(
     return model.predict(X_val)
 
 
-def fit_xgb(train_df: pd.DataFrame, feature_cols: list = None, params: dict = None) -> xgb.XGBRegressor:
+def fit_xgb(train_df: pd.DataFrame, feature_cols: Optional[list] = None, params: Optional[dict] = None) -> xgb.XGBRegressor:
     feature_cols = feature_cols or ALL_FEATURE_COLS
     params = {**DEFAULT_XGB_PARAMS, **(params or {})}
     X_train = make_lgb_frame(train_df, feature_cols)
@@ -155,7 +161,7 @@ def fit_xgb(train_df: pd.DataFrame, feature_cols: list = None, params: dict = No
     return model
 
 
-def fit_predict_local_per_sku(train_df: pd.DataFrame, val_df: pd.DataFrame, feature_cols: list = None) -> np.ndarray:
+def fit_predict_local_per_sku(train_df: pd.DataFrame, val_df: pd.DataFrame, feature_cols: Optional[list] = None) -> np.ndarray:
     """Train one LightGBM per SKU (pooling its channel/region rows), predict val_df row-by-SKU.
 
     SKUs present in val_df but absent (or with <20 rows) in train_df fall back to the

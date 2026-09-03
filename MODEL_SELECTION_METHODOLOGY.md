@@ -39,23 +39,32 @@
 ## 2. Core Forecasting (Phase 7)
 
 ### หลักการเลือก
-**ไม่ได้เลือกโมเดลมาลองสุ่มๆ 3 ตัว** แต่ออกแบบให้ทดสอบ **2 แกนการออกแบบพร้อมกัน** ในการทดลองเดียว:
+**ไม่ได้เลือกโมเดลมาลองสุ่มๆ** แต่ออกแบบให้ทดสอบ **แกนการออกแบบที่แยกจากกันได้** ในการทดลองเดียว:
 
-| แกนที่ 1: pooling ข้อมูล | แกนที่ 2: วิธีการ |
-|---|---|
-| Global (โมเดลเดียวรวมทุกสินค้า) vs Local (แยกต่อสินค้า) | LightGBM (Machine Learning) vs Holt-Winters ETS (สถิติคลาสสิก) |
+| แกนที่ 1: pooling ข้อมูล | แกนที่ 2: วิธีการ | แกนที่ 3: library (boosting implementation) |
+|---|---|---|
+| Global (โมเดลเดียวรวมทุกสินค้า) vs Local (แยกต่อสินค้า) | LightGBM (Machine Learning) vs Holt-Winters ETS (สถิติคลาสสิก) | LightGBM vs XGBoost (ทั้งคู่ global pooled, ฟีเจอร์/fold ชุดเดียวกัน) |
 
 **เหตุผลของการออกแบบแบบนี้**: ทำให้รู้ได้ว่า **"อะไรกันแน่"** ที่ทำให้ผลดีขึ้น ไม่ใช่แค่รู้ว่า "โมเดล A ดีกว่า B" เฉยๆ
 เช่น การที่ Global LightGBM ชนะ Local LightGBM (อัลกอริทึมเดียวกัน ต่างแค่วิธีจัดกลุ่มข้อมูล) พิสูจน์ได้ชัดว่า
 **การ pooling ข้อมูลข้ามสินค้าช่วยจริง** ไม่ใช่แค่ LightGBM เก่งกว่า ETS เฉยๆ
 
+**แกนที่ 3 (library) เพิ่มเข้ามาทีหลัง** ในฐานะ **robustness/challenger check** ไม่ใช่ส่วนหนึ่งของการออกแบบ 2 แกนดั้งเดิม:
+Global pooled XGBoost (`reg:absoluteerror`, ฟีเจอร์/categorical handling/fold ชุดเดียวกับ Global pooled LightGBM
+ทุกประการ) ใช้ตรวจว่าผลของ Global pooled LightGBM ไม่ได้ดีเพราะบังเอิญเจาะจงกับ boosting implementation ตัวเดียว —
+เทียบราย fold พร้อม standard deviation (ไม่ใช่แค่ค่าเฉลี่ยตัวเดียว) ดู [`07_core_forecasting.ipynb`](notebooks/07_core_forecasting.ipynb) ส่วนที่ 2
+
 ### วิธีเปรียบเทียบ
 1. WAPE บน walk-forward CV fold **ชุดเดียวกัน** ทุกโมเดล (7 fold)
 2. เทียบ final holdout (10 สัปดาห์สุดท้าย ไม่เคยถูกแตะ) แยกต่างหากจาก CV average
 3. **เช็ค feature importance เพิ่ม** เพื่อยืนยันว่าโมเดลที่ชนะเรียนรู้อะไรที่สมเหตุสมผลจริง ไม่ใช่แค่ตัวเลขต่ำเพราะบังเอิญ
+4. **แกน library**: เทียบราย fold + standard deviation ระหว่าง LightGBM กับ XGBoost เพื่อแยกว่าความต่างเป็น
+   สัญญาณจริงหรือแค่ noise ปกติจากการเทรนซ้ำ
 
 ### ผลลัพธ์
-Global Pooled LightGBM ชนะ (WAPE 0.224) → กลายเป็น **"โมเดลหลัก"** ที่ใช้ต่อใน Phase 10 และ 11
+Global Pooled LightGBM ชนะ (WAPE 0.224) → กลายเป็น **"โมเดลหลัก"** ที่ใช้ต่อใน Phase 10 และ 11 — Global Pooled
+XGBoost ให้ WAPE ใกล้เคียงกันมาก (0.225) ยืนยันว่าผลลัพธ์ robust ข้าม library ไม่ได้ทำหน้าที่เป็นเพดานอ้างอิงหรือถูก
+carry ต่อไปยัง phase อื่น
 
 ---
 
@@ -87,7 +96,7 @@ Global Pooled LightGBM ชนะ (WAPE 0.224) → กลายเป็น **"�
 | Phase | หลักการเลือกตัวเปรียบเทียบ | มิติที่ใช้ตัดสิน |
 |---|---|---|
 | Baseline | ครอบคลุมสมมติฐานง่ายๆ ที่ต่างกัน 3 แบบ | ตัวเลขเฉลี่ยตัวเดียว (หาเกณฑ์ขั้นต่ำ) |
-| Core Forecasting | แยกทดสอบ 2 แกนออกแบบ (pooling × วิธีการ) | WAPE (CV + holdout) + ความสม่ำเสมอ + feature importance |
+| Core Forecasting | แยกทดสอบ pooling × วิธีการ + เช็ค library axis (LightGBM vs XGBoost) เพิ่ม | WAPE (CV + holdout) + ความสม่ำเสมอ + feature importance + std dev ราย fold (library axis) |
 | Cold-Start | เทียบกลยุทธ์รับมือข้อมูลขาด 3 แบบ + มีเพดานอ้างอิง | WAPE แยกตามอายุสินค้า ไม่ใช่ค่าเฉลี่ยเดียว |
 
 ## หลักการร่วมที่ใช้ทุก Phase (ไม่เปลี่ยนแปลง)

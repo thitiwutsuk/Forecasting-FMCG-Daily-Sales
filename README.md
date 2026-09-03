@@ -5,6 +5,7 @@
 ![NumPy](https://img.shields.io/badge/NumPy-2.0-013243?style=flat&logo=numpy&logoColor=white&labelColor=1a1a2e)
 ![scikit-learn](https://img.shields.io/badge/scikit--learn-1.6-F7931E?style=flat&logo=scikitlearn&logoColor=white&labelColor=1a1a2e)
 ![LightGBM](https://img.shields.io/badge/LightGBM-4.6-3499CD?style=flat&labelColor=1a1a2e)
+![XGBoost](https://img.shields.io/badge/XGBoost-3.4-006ACC?style=flat&labelColor=1a1a2e)
 ![statsmodels](https://img.shields.io/badge/statsmodels-0.14-8CAAE6?style=flat&labelColor=1a1a2e)
 ![Matplotlib](https://img.shields.io/badge/Matplotlib-3.9-11557C?style=flat&logo=matplotlib&logoColor=white&labelColor=1a1a2e)
 ![Jupyter](https://img.shields.io/badge/Jupyter-Notebook-F37626?style=flat&logo=jupyter&logoColor=white&labelColor=1a1a2e)
@@ -90,8 +91,8 @@ Standard data science lifecycle, 16 phases mapped to numbered notebooks in `note
 
 ## Tech Stack
 
-pandas, numpy, scikit-learn, LightGBM, statsmodels / linearmodels, matplotlib, seaborn, joblib,
-pytest (badges above).
+pandas, numpy, scikit-learn, LightGBM, XGBoost, statsmodels / linearmodels, matplotlib, seaborn,
+joblib, pytest (badges above).
 
 ## Repository Structure
 
@@ -136,7 +137,7 @@ Forecasting FMCG Daily Sales/
 
 ### Modeling
 - [x] **Phase 6 — Baselines**: Moving Average (4w) best simple baseline, WAPE 0.243
-- [x] **Phase 7 — Core forecasting**: global pooled LightGBM wins, **WAPE 0.224** — beats local per-SKU LightGBM (0.257), the baseline, and Holt-Winters ETS (0.301 vs. 0.214 for LightGBM on the same subset); carried forward as the primary model
+- [x] **Phase 7 — Core forecasting**: global pooled LightGBM wins, **WAPE 0.224** — beats local per-SKU LightGBM (0.256), the baseline, and Holt-Winters ETS (0.301 vs. 0.212 for LightGBM on the same subset); a global pooled XGBoost challenger scores nearly identically (0.225, fold-level std dev checked), confirming the result is robust to boosting library choice, not an artifact of one implementation; LightGBM carried forward as the primary model
 - [x] **Phase 8 — Promotion effect**: two-way fixed-effects regression, **+28.4% uplift [27.6%, 29.3%], p < 0.001**, consistent ~28–29% across all 5 categories
 - [x] **Phase 9 — Seasonality & trend**: STL decomposition per category — seasonal variance share from 8% (Milk, trend-dominated) to 87% (SnackBar)
 - [x] **Phase 10 — Cold-start forecasting**: analog-matching vs. meta-learner vs. full model on 5 held-out new SKUs — both ML approaches clearly beat analog matching at every age
@@ -155,7 +156,7 @@ readers. `reports/final_report.md` stays in English for a hiring-manager audienc
 
 ## Key Findings
 
-- **Forecasting**: Global pooled LightGBM reaches **WAPE 0.224** on 7-fold walk-forward CV, ahead of the best baseline (0.243), local per-SKU LightGBM (0.257), and Holt-Winters ETS (0.301 on the same top-5-series subset where LightGBM scores 0.214)
+- **Forecasting**: Global pooled LightGBM reaches **WAPE 0.224** on 7-fold walk-forward CV, ahead of the best baseline (0.243), local per-SKU LightGBM (0.256), and Holt-Winters ETS (0.301 on the same top-5-series subset where LightGBM scores 0.212). A global pooled XGBoost run on identical folds/features scores 0.225 — a robustness check on the boosting-library choice, not a separate model carried forward
 - **Promotions**: **+28.4% sales uplift [27.6%, 29.3%], p < 0.001**, consistent across all 5 categories
 - **Seasonality**: variance share ranges from 8% (Milk, trend-dominated) to 87% (SnackBar) — category-dependent, not a single business-wide factor
 - **Cold start**: both ML approaches clearly beat naive analog-matching at every SKU age; the full model held up from the first available week

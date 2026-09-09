@@ -41,9 +41,9 @@
 ### หลักการเลือก
 **ไม่ได้เลือกโมเดลมาลองสุ่มๆ** แต่ออกแบบให้ทดสอบ **แกนการออกแบบที่แยกจากกันได้** ในการทดลองเดียว:
 
-| แกนที่ 1: pooling ข้อมูล | แกนที่ 2: วิธีการ | แกนที่ 3: library (boosting implementation) |
+| แกนที่ 1: pooling ข้อมูล | แกนที่ 2: วิธีการ | แกนที่ 3: library (boosting vs bagging) |
 |---|---|---|
-| Global (โมเดลเดียวรวมทุกสินค้า) vs Local (แยกต่อสินค้า) | LightGBM (Machine Learning) vs Holt-Winters ETS (สถิติคลาสสิก) | LightGBM vs XGBoost (ทั้งคู่ global pooled, ฟีเจอร์/fold ชุดเดียวกัน) |
+| Global (โมเดลเดียวรวมทุกสินค้า) vs Local (แยกต่อสินค้า) | LightGBM (Machine Learning) vs Holt-Winters ETS (สถิติคลาสสิก) | LightGBM vs XGBoost vs Random Forest (ทั้ง 3 ตัว global pooled, ฟีเจอร์/fold ชุดเดียวกัน) |
 
 **เหตุผลของการออกแบบแบบนี้**: ทำให้รู้ได้ว่า **"อะไรกันแน่"** ที่ทำให้ผลดีขึ้น ไม่ใช่แค่รู้ว่า "โมเดล A ดีกว่า B" เฉยๆ
 เช่น การที่ Global LightGBM ชนะ Local LightGBM (อัลกอริทึมเดียวกัน ต่างแค่วิธีจัดกลุ่มข้อมูล) พิสูจน์ได้ชัดว่า
@@ -51,20 +51,25 @@
 
 **แกนที่ 3 (library) เพิ่มเข้ามาทีหลัง** ในฐานะ **robustness/challenger check** ไม่ใช่ส่วนหนึ่งของการออกแบบ 2 แกนดั้งเดิม:
 Global pooled XGBoost (`reg:absoluteerror`, ฟีเจอร์/categorical handling/fold ชุดเดียวกับ Global pooled LightGBM
-ทุกประการ) ใช้ตรวจว่าผลของ Global pooled LightGBM ไม่ได้ดีเพราะบังเอิญเจาะจงกับ boosting implementation ตัวเดียว —
-เทียบราย fold พร้อม standard deviation (ไม่ใช่แค่ค่าเฉลี่ยตัวเดียว) ดู [`07_core_forecasting.ipynb`](notebooks/07_core_forecasting.ipynb) ส่วนที่ 2
+ทุกประการ) และ Global pooled Random Forest (`sklearn.RandomForestRegressor` — bagging แทน boosting, ต้อง
+ordinal-encode categorical columns และเติมค่า `promo_recency` ที่เป็น NaN ด้วย sentinel เพราะ sklearn RF ไม่รองรับ
+category dtype/NaN แบบ native เหมือน LightGBM/XGBoost) ใช้ตรวจว่าผลของ Global pooled LightGBM ไม่ได้ดีเพราะบังเอิญ
+เจาะจงกับ implementation ตัวเดียว — เทียบราย fold พร้อม standard deviation และ paired significance test (ไม่ใช่แค่
+ค่าเฉลี่ยตัวเดียว) ดู [`07_core_forecasting.ipynb`](notebooks/07_core_forecasting.ipynb) ส่วนที่ 2-3
 
 ### วิธีเปรียบเทียบ
 1. WAPE บน walk-forward CV fold **ชุดเดียวกัน** ทุกโมเดล (7 fold)
 2. เทียบ final holdout (10 สัปดาห์สุดท้าย ไม่เคยถูกแตะ) แยกต่างหากจาก CV average
 3. **เช็ค feature importance เพิ่ม** เพื่อยืนยันว่าโมเดลที่ชนะเรียนรู้อะไรที่สมเหตุสมผลจริง ไม่ใช่แค่ตัวเลขต่ำเพราะบังเอิญ
-4. **แกน library**: เทียบราย fold + standard deviation ระหว่าง LightGBM กับ XGBoost เพื่อแยกว่าความต่างเป็น
-   สัญญาณจริงหรือแค่ noise ปกติจากการเทรนซ้ำ
+4. **แกน library**: เทียบราย fold + standard deviation ระหว่าง LightGBM, XGBoost, Random Forest พร้อม paired
+   t-test ข้าม fold ระหว่างคู่ที่ WAPE ใกล้กันที่สุด เพื่อแยกว่าความต่างเป็นสัญญาณจริงหรือแค่ noise ปกติจากการเทรนซ้ำ
+   (วิธีเดียวกับที่ใช้ใน Phase 11)
 
 ### ผลลัพธ์
-Global Pooled LightGBM ชนะ (WAPE 0.224) → กลายเป็น **"โมเดลหลัก"** ที่ใช้ต่อใน Phase 10 และ 11 — Global Pooled
-XGBoost ให้ WAPE ใกล้เคียงกันมาก (0.225) ยืนยันว่าผลลัพธ์ robust ข้าม library ไม่ได้ทำหน้าที่เป็นเพดานอ้างอิงหรือถูก
-carry ต่อไปยัง phase อื่น
+Global Pooled LightGBM ชนะเฉียดฉิว (WAPE 0.224) → กลายเป็น **"โมเดลหลัก"** ที่ใช้ต่อใน Phase 10 และ 11 — Global
+Pooled XGBoost (0.224) และ Global Pooled Random Forest (0.224) ให้ WAPE เท่ากันที่ทศนิยม 3 ตำแหน่ง และ paired
+t-test ระหว่าง LightGBM กับ XGBoost (คู่ที่ใกล้กันที่สุด) ให้ p = 0.401 — ไม่มีนัยสำคัญทางสถิติ ยืนยันว่าผลลัพธ์
+robust ข้าม library (boosting หรือ bagging) จริงๆ ไม่ได้ทำหน้าที่เป็นเพดานอ้างอิงหรือถูก carry ต่อไปยัง phase อื่น
 
 ---
 
@@ -96,7 +101,7 @@ carry ต่อไปยัง phase อื่น
 | Phase | หลักการเลือกตัวเปรียบเทียบ | มิติที่ใช้ตัดสิน |
 |---|---|---|
 | Baseline | ครอบคลุมสมมติฐานง่ายๆ ที่ต่างกัน 3 แบบ | ตัวเลขเฉลี่ยตัวเดียว (หาเกณฑ์ขั้นต่ำ) |
-| Core Forecasting | แยกทดสอบ pooling × วิธีการ + เช็ค library axis (LightGBM vs XGBoost) เพิ่ม | WAPE (CV + holdout) + ความสม่ำเสมอ + feature importance + std dev ราย fold (library axis) |
+| Core Forecasting | แยกทดสอบ pooling × วิธีการ + เช็ค library axis (LightGBM vs XGBoost vs Random Forest) เพิ่ม | WAPE (CV + holdout) + ความสม่ำเสมอ + feature importance + std dev ราย fold + paired significance test (library axis) |
 | Cold-Start | เทียบกลยุทธ์รับมือข้อมูลขาด 3 แบบ + มีเพดานอ้างอิง | WAPE แยกตามอายุสินค้า ไม่ใช่ค่าเฉลี่ยเดียว |
 
 ## หลักการร่วมที่ใช้ทุก Phase (ไม่เปลี่ยนแปลง)

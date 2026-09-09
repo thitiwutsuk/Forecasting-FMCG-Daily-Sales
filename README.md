@@ -137,7 +137,7 @@ Forecasting FMCG Daily Sales/
 
 ### Modeling
 - [x] **Phase 6 — Baselines**: Moving Average (4w) best simple baseline, WAPE 0.243
-- [x] **Phase 7 — Core forecasting**: global pooled LightGBM wins, **WAPE 0.224** — beats local per-SKU LightGBM (0.256), the baseline, and Holt-Winters ETS (0.301 vs. 0.212 for LightGBM on the same subset); a global pooled XGBoost challenger scores nearly identically (0.225, fold-level std dev checked), confirming the result is robust to boosting library choice, not an artifact of one implementation; LightGBM carried forward as the primary model
+- [x] **Phase 7 — Core forecasting**: global pooled LightGBM wins, **WAPE 0.224** — beats local per-SKU LightGBM (0.257), the baseline, and Holt-Winters ETS (0.301 vs. 0.214 for LightGBM on the same subset); global pooled XGBoost and Random Forest challengers score identically at 0.224 (fold-level std dev + paired t-test checked, p = 0.401, not significant), confirming the result is robust to library choice (boosting or bagging), not an artifact of one implementation; LightGBM carried forward as the primary model
 - [x] **Phase 8 — Promotion effect**: two-way fixed-effects regression, **+28.4% uplift [27.6%, 29.3%], p < 0.001**, consistent ~28–29% across all 5 categories
 - [x] **Phase 9 — Seasonality & trend**: STL decomposition per category — seasonal variance share from 8% (Milk, trend-dominated) to 87% (SnackBar)
 - [x] **Phase 10 — Cold-start forecasting**: analog-matching vs. meta-learner vs. full model on 5 held-out new SKUs — both ML approaches clearly beat analog matching at every age
@@ -156,7 +156,7 @@ readers. `reports/final_report.md` stays in English for a hiring-manager audienc
 
 ## Key Findings
 
-- **Forecasting**: Global pooled LightGBM reaches **WAPE 0.224** on 7-fold walk-forward CV, ahead of the best baseline (0.243), local per-SKU LightGBM (0.256), and Holt-Winters ETS (0.301 on the same top-5-series subset where LightGBM scores 0.212). A global pooled XGBoost run on identical folds/features scores 0.225 — a robustness check on the boosting-library choice, not a separate model carried forward
+- **Forecasting**: Global pooled LightGBM reaches **WAPE 0.224** on 7-fold walk-forward CV, ahead of the best baseline (0.243), local per-SKU LightGBM (0.257), and Holt-Winters ETS (0.301 on the same top-5-series subset where LightGBM scores 0.214). Global pooled XGBoost and Random Forest runs on identical folds/features both score 0.224 too — a robustness check on the library choice (boosting vs. bagging), not separate models carried forward — with a paired t-test confirming the differences aren't statistically significant (p = 0.401)
 - **Promotions**: **+28.4% sales uplift [27.6%, 29.3%], p < 0.001**, consistent across all 5 categories
 - **Seasonality**: variance share ranges from 8% (Milk, trend-dominated) to 87% (SnackBar) — category-dependent, not a single business-wide factor
 - **Cold start**: both ML approaches clearly beat naive analog-matching at every SKU age; the full model held up from the first available week

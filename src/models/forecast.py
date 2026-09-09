@@ -1,5 +1,5 @@
 """Core forecasting models (Phase 7): global pooled LightGBM, local per-SKU LightGBM,
-global pooled XGBoost.
+global pooled XGBoost, global pooled Random Forest.
 
 Feature/label split is centralized here so Phase 10 (cold-start) and Phase 11
 (ablation) reuse the exact same column bookkeeping instead of redefining it.
@@ -11,6 +11,7 @@ import lightgbm as lgb
 import numpy as np
 import pandas as pd
 import xgboost as xgb
+from sklearn.ensemble import RandomForestRegressor
 
 TARGET = "target_next_week"
 
@@ -157,6 +158,69 @@ def fit_xgb(train_df: pd.DataFrame, feature_cols: Optional[list] = None, params:
     X_train = make_lgb_frame(train_df, feature_cols)
     y_train = train_df[TARGET].values
     model = xgb.XGBRegressor(**params)
+    model.fit(X_train, y_train)
+    return model
+
+
+def make_rf_frame(df: pd.DataFrame, feature_cols: list) -> pd.DataFrame:
+    """Select feature columns for Random Forest: sklearn's RandomForestRegressor has no
+    native categorical support (unlike LightGBM/XGBoost) and rejects NaN, so categoricals
+    are ordinal-encoded via .cat.codes and promo_recency's legitimate "never promoted"
+    NaNs (see README Data section) are filled with a distinct out-of-range sentinel so
+    trees can still split those rows apart from real recency values.
+    """
+    X = df[feature_cols].copy()
+    for col in CATEGORICAL_COLS:
+        if col in X.columns:
+            if not isinstance(X[col].dtype, pd.CategoricalDtype):
+                X[col] = X[col].astype("category")
+            X[col] = X[col].cat.codes
+    if "promo_recency" in X.columns:
+        X["promo_recency"] = X["promo_recency"].fillna(-1)
+    return X
+
+
+DEFAULT_RF_PARAMS = dict(
+    # criterion="squared_error" (sklearn default) trains on L2, same caveat as
+    # DEFAULT_LGB_PARAMS above — kept for a fair library-axis comparison against
+    # LightGBM's default objective rather than tuning RF specifically for L1/WAPE.
+    n_estimators=300,
+    max_depth=None,
+    min_samples_leaf=20,
+    n_jobs=-1,
+    random_state=42,
+)
+
+
+def fit_predict_rf(
+    train_df: pd.DataFrame,
+    val_df: pd.DataFrame,
+    feature_cols: Optional[list] = None,
+    params: Optional[dict] = None,
+) -> np.ndarray:
+    """Train one RandomForestRegressor on train_df, return predictions for val_df.
+
+    Same global-pooled scheme as fit_predict_lgb/fit_predict_xgb; frame prep differs
+    (make_rf_frame, not make_lgb_frame) because sklearn RF needs numeric, NaN-free input.
+    """
+    feature_cols = feature_cols or ALL_FEATURE_COLS
+    params = {**DEFAULT_RF_PARAMS, **(params or {})}
+
+    X_train = make_rf_frame(train_df, feature_cols)
+    y_train = train_df[TARGET].values
+    X_val = make_rf_frame(val_df, feature_cols)
+
+    model = RandomForestRegressor(**params)
+    model.fit(X_train, y_train)
+    return model.predict(X_val)
+
+
+def fit_rf(train_df: pd.DataFrame, feature_cols: Optional[list] = None, params: Optional[dict] = None) -> RandomForestRegressor:
+    feature_cols = feature_cols or ALL_FEATURE_COLS
+    params = {**DEFAULT_RF_PARAMS, **(params or {})}
+    X_train = make_rf_frame(train_df, feature_cols)
+    y_train = train_df[TARGET].values
+    model = RandomForestRegressor(**params)
     model.fit(X_train, y_train)
     return model
 

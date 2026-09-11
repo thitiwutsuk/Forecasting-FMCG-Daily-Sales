@@ -78,26 +78,6 @@ Standard data science lifecycle, 16 phases mapped to numbered notebooks in `note
 | Evaluation | 12–13 | Model rollup · future holdout backtest |
 | Deployment & Communication | 14–15 | Final report · documentation |
 
-### Pipeline Overview
-
-```mermaid
-flowchart TD
-    A[Raw daily transactions<br/>FMCG_2022_2024.csv] --> B[Build weekly base table<br/>roll-up, lag/rolling features,<br/>calendar & lifecycle flags]
-    B --> C[Validation & split<br/>7-fold walk-forward, time-based]
-    C --> D{Modeling}
-    D --> E1[Forecasting<br/>pooled LightGBM]
-    D --> E2[Promotion effect<br/>fixed-effects regression]
-    D --> E3[Seasonality & trend<br/>STL decomposition]
-    D --> E4[Cold-start forecasting<br/>analog vs. meta-learner]
-    D --> E5[Feature ablation]
-    E1 --> F[Evaluation & holdout backtest]
-    E2 --> F
-    E3 --> F
-    E4 --> F
-    E5 --> F
-    F --> G[Final report<br/>business-framed findings]
-```
-
 ## Approach Highlights
 
 - **Splitting**: strictly time-based (by week), never random — no model sees a week it will

@@ -10,3 +10,4 @@ env/
 *.egg-info/
 _TEMPLATE*.ipynb
 _TEMPLATE.ipynb
+reports/promotion_panel_export.csv

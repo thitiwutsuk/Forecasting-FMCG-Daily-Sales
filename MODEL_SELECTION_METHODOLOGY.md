@@ -57,6 +57,12 @@ category dtype/NaN แบบ native เหมือน LightGBM/XGBoost) ใช�
 เจาะจงกับ implementation ตัวเดียว — เทียบราย fold พร้อม standard deviation และ paired significance test (ไม่ใช่แค่
 ค่าเฉลี่ยตัวเดียว) ดู [`07_core_forecasting.ipynb`](notebooks/07_core_forecasting.ipynb) ส่วนที่ 2-3
 
+**หมายเหตุ**: `min_child_samples=20` (LightGBM), `min_samples_leaf=20` (Random Forest) และ `min_child_weight=20`
+(XGBoost) ตั้งเลขเดียวกันเพื่อให้ "ความพยายาม regularize" ใกล้เคียงกัน ไม่ใช่เพราะทั้งสามค่ามีความหมายเดียวกันทุก
+ประการ — สองตัวแรกนับจำนวนแถวตรงๆ ส่วน `min_child_weight` ของ XGBoost คือ threshold บนผลรวม Hessian (second
+derivative) ของแถวใน leaf ซึ่งเท่ากับจำนวนแถวจริงก็ต่อเมื่อทุกแถวมี Hessian = 1 (เป็นจริงสำหรับ squared-error loss
+แต่ไม่ได้การันตีสำหรับ `reg:absoluteerror` ที่ใช้อยู่ที่นี่) ดูรายละเอียดใน comment ที่ `src/models/forecast.py`
+
 ### วิธีเปรียบเทียบ
 1. WAPE บน walk-forward CV fold **ชุดเดียวกัน** ทุกโมเดล (7 fold)
 2. เทียบ final holdout (10 สัปดาห์สุดท้าย ไม่เคยถูกแตะ) แยกต่างหากจาก CV average

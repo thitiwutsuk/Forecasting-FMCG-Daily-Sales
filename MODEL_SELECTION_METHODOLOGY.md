@@ -61,16 +61,27 @@ category dtype/NaN แบบ native เหมือน LightGBM/XGBoost) ใช�
 1. WAPE บน walk-forward CV fold **ชุดเดียวกัน** ทุกโมเดล (7 fold)
 2. เทียบ final holdout (10 สัปดาห์สุดท้าย ไม่เคยถูกแตะ) แยกต่างหากจาก CV average
 3. **เช็ค feature importance เพิ่ม** เพื่อยืนยันว่าโมเดลที่ชนะเรียนรู้อะไรที่สมเหตุสมผลจริง ไม่ใช่แค่ตัวเลขต่ำเพราะบังเอิญ
-4. **แกน library**: เทียบราย fold + standard deviation ระหว่าง LightGBM, XGBoost, Random Forest พร้อม paired
-   t-test ข้าม fold ระหว่างคู่ที่ WAPE ใกล้กันที่สุด เพื่อแยกว่าความต่างเป็นสัญญาณจริงหรือแค่ noise ปกติจากการเทรนซ้ำ
-   (วิธีเดียวกับที่ใช้ใน Phase 11)
+4. **แกน library**: เทียบราย fold + standard deviation ระหว่าง LightGBM, XGBoost, Random Forest — ทดสอบนัยสำคัญ
+   (paired t-test ข้าม fold) ของ **LightGBM (โมเดลหลัก) เทียบกับ challenger ทั้งสองตัวแยกกัน** คือ LightGBM vs
+   XGBoost และ LightGBM vs Random Forest ไม่ใช่แค่เลือกคู่ที่ WAPE เฉลี่ยต่ำสุด 2 อันดับมาทดสอบคู่เดียว (ซึ่งเมื่อมี
+   3 โมเดล ไม่จำเป็นต้องเป็นคู่ที่ใกล้กันที่สุดจริงๆ) — เพราะทดสอบ 2 คู่พร้อมกันจึงปรับ p-value ด้วย **Holm correction**
+   ด้วย เพื่อคุมอัตรา false positive รวม (วิธีเดียวกับที่ใช้ใน Phase 11)
 
 ### ผลลัพธ์
 Global Pooled LightGBM ชนะเฉียดฉิว (WAPE 0.224) → กลายเป็น **"โมเดลหลัก"** ที่ใช้ต่อใน Phase 10 และ 11 — Global
-Pooled Random Forest ให้ WAPE เท่ากันที่ทศนิยม 3 ตำแหน่ง (0.224) ส่วน Global Pooled XGBoost อยู่ที่ 0.225 และ paired
-t-test ระหว่าง LightGBM กับ Random Forest (คู่ที่ใกล้กันที่สุดจริงๆ ตามค่าเฉลี่ย ไม่ใช่แค่ 2 ตัวที่ WAPE ต่ำสุด) ให้
-p = 0.606 — ไม่มีนัยสำคัญทางสถิติ ยืนยันว่าผลลัพธ์ robust ข้าม library (boosting หรือ bagging) จริงๆ ไม่ได้ทำหน้าที่เป็น
-เพดานอ้างอิงหรือถูก carry ต่อไปยัง phase อื่น
+Pooled Random Forest ให้ WAPE เท่ากันที่ทศนิยม 3 ตำแหน่ง (0.224) ส่วน Global Pooled XGBoost อยู่ที่ 0.225
+
+Paired t-test ของ LightGBM เทียบกับ challenger ทั้งสองตัว (n = 7 folds, Holm-corrected):
+
+| คู่เปรียบเทียบ | mean WAPE diff | 95% CI | raw p | Holm-adjusted p | มีนัยสำคัญที่ 0.05? |
+|---|---|---|---|---|---|
+| LightGBM vs XGBoost | −0.0014 | [−0.0035, 0.0007] | 0.149 | 0.297 | ไม่ |
+| LightGBM vs Random Forest | −0.0006 | [−0.0031, 0.0020] | 0.606 | 0.606 | ไม่ |
+
+ไม่พบความแตกต่างที่มีนัยสำคัญทางสถิติกับ challenger ทั้งสองตัว (ใช้คำว่า "ไม่พบความแตกต่างที่มีนัยสำคัญ" อย่างตั้งใจ
+แทน "พิสูจน์แล้วว่าเท่ากัน" — การไม่ reject H0 ไม่ใช่หลักฐานว่าไม่มีความต่างเลย เพียงแต่ข้อมูล 7 folds ไม่พอจะสรุปว่าต่าง
+อย่างมีนัยสำคัญ) ยืนยันว่าผลลัพธ์ robust ข้าม library (boosting หรือ bagging) จริงๆ ไม่ได้ทำหน้าที่เป็นเพดานอ้างอิงหรือ
+ถูก carry ต่อไปยัง phase อื่น
 
 **หมายเหตุเรื่อง reproducibility**: ตัวเลขข้างต้นมาจากการรันแบบ deterministic (LightGBM ตั้ง `deterministic=True` +
 `force_row_wise=True`, Random Forest รันแบบ single-thread `n_jobs=1`) เพราะพบว่า fixed `random_state` อย่างเดียว

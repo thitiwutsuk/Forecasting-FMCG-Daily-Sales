@@ -154,7 +154,7 @@ Forecasting FMCG Daily Sales/
 - [x] **Phase 6 — Baselines**: Moving Average (4w) is the best simple baseline, WAPE 0.243
 - [x] **Phase 7 — Core forecasting**: global pooled LightGBM wins, **WAPE 0.224**
   - Beats the baseline (0.243), local per-SKU LightGBM (0.257), and Holt-Winters ETS (0.301 vs. 0.214 for LightGBM on the same subset)
-  - Random Forest challenger scores identically at 0.224; XGBoost scores 0.225 (closest-pair paired t-test, LightGBM vs. Random Forest, p = 0.606 — not significant), confirming the result is robust to library choice
+  - Random Forest challenger scores identically at 0.224; XGBoost scores 0.225 — paired t-tests of LightGBM against each challenger (Holm-corrected for testing both) found no significant difference either way: XGBoost p = 0.297, Random Forest p = 0.606 — confirming the result is robust to library choice
   - LightGBM carried forward as the primary model
 - [x] **Phase 8 — Promotion effect**: two-way fixed-effects regression finds **+28.4% uplift** [27.6%, 29.3%], p < 0.001
   - Consistent ~28–29% across all 5 categories
@@ -181,7 +181,7 @@ readers. `reports/final_report.md` stays in English for a hiring-manager audienc
 
 - **Forecasting**: global pooled LightGBM reaches **WAPE 0.224** on 7-fold walk-forward CV
   - Ahead of the best baseline (0.243), local per-SKU LightGBM (0.257), and Holt-Winters ETS (0.301 on the same top-5-series subset where LightGBM scores 0.214)
-  - Global pooled Random Forest scores 0.224 too, XGBoost scores 0.225 — a robustness check on library choice, not separate models carried forward — with a paired t-test on the closest pair (LightGBM vs. Random Forest) confirming the difference isn't significant (p = 0.606)
+  - Global pooled Random Forest scores 0.224 too, XGBoost scores 0.225 — a robustness check on library choice, not separate models carried forward — paired t-tests against LightGBM (Holm-corrected for testing both challengers) found no significant difference either way (XGBoost p = 0.297, Random Forest p = 0.606)
 - **Promotions**: **+28.4% sales uplift** [27.6%, 29.3%], p < 0.001, consistent across all 5 categories
 - **Seasonality**: variance share ranges from 8% (Milk, trend-dominated) to 87% (SnackBar) — category-dependent, not a single business-wide factor
 - **Cold start**: both ML approaches clearly beat naive analog-matching at every SKU age; the full model held up from the first available week

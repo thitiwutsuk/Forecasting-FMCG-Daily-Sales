@@ -11,7 +11,11 @@
 ![Jupyter](https://img.shields.io/badge/Jupyter-F37626?style=for-the-badge&logo=jupyter&logoColor=white)
 ![License](https://img.shields.io/badge/MIT_License-4CAF50?style=for-the-badge&logoColor=white)
 
+<div align="right">
+
 ![Progress](https://img.shields.io/badge/Progress_12%2F16-4CAF50?style=for-the-badge&logoColor=white)
+
+</div>
 
 Demand forecasting, promotion effectiveness, and cold-start forecasting for a simulated
 multi-channel, multi-region FMCG business.

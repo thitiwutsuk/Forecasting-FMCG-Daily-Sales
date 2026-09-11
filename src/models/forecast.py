@@ -87,13 +87,18 @@ DEFAULT_LGB_PARAMS = dict(
     num_leaves=31,
     # min_child_samples=20 here, min_samples_leaf=20 in DEFAULT_RF_PARAMS, and
     # min_child_weight=20 in DEFAULT_XGB_PARAMS below are set to the same number for a
-    # same-effort comparison across libraries, not because they mean the same thing.
-    # min_child_samples/min_samples_leaf are literal row counts; XGBoost's
-    # min_child_weight is a threshold on the SUM of per-row Hessian (second-derivative)
-    # weights in a leaf, which only equals a row count when every row's Hessian is 1
-    # (true for squared-error loss, not guaranteed for the reg:absoluteerror objective
-    # used below, where the per-row Hessian isn't simply constant). Treat "20" as
-    # roughly comparable in intent across the three, not an identical constraint.
+    # same-effort comparison across libraries, not because they mean the same thing:
+    # - RF's min_samples_leaf is a literal row count.
+    # - LightGBM's min_child_samples (min_data_in_leaf) is a nominal row-count target,
+    #   but LightGBM's own docs note it's implemented as an approximation based on the
+    #   Hessian, so a leaf can occasionally end up with fewer rows than this value.
+    # - XGBoost's min_child_weight is a threshold on the SUM of per-row Hessian
+    #   (second-derivative) weights in a leaf, which only equals a row count when every
+    #   row's Hessian is 1 (true for squared-error loss, not guaranteed for the
+    #   reg:absoluteerror objective used below, where the per-row Hessian isn't simply
+    #   constant).
+    # Treat "20" as roughly comparable in intent across the three, not an identical
+    # constraint -- RF is the only one of the three enforcing it exactly.
     min_child_samples=20,
     verbosity=-1,
     random_state=42,
@@ -253,7 +258,7 @@ DEFAULT_RF_PARAMS = dict(
     # LightGBM's default objective rather than tuning RF specifically for L1/WAPE.
     n_estimators=300,
     max_depth=None,
-    min_samples_leaf=20,  # literal row count, same as LightGBM's min_child_samples -- see DEFAULT_LGB_PARAMS above
+    min_samples_leaf=20,  # literal row count, exact (unlike LightGBM's approximate min_child_samples) -- see DEFAULT_LGB_PARAMS above
     # n_jobs=1, not N_JOBS: a fixed random_state alone does NOT make
     # RandomForestRegressor bit-reproducible under joblib parallelism -- the per-tree
     # predictions are still summed into the ensemble average in whatever order the

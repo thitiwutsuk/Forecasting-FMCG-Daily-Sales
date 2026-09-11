@@ -59,7 +59,9 @@ category dtype/NaN แบบ native เหมือน LightGBM/XGBoost) ใช�
 
 **หมายเหตุ**: `min_child_samples=20` (LightGBM), `min_samples_leaf=20` (Random Forest) และ `min_child_weight=20`
 (XGBoost) ตั้งเลขเดียวกันเพื่อให้ "ความพยายาม regularize" ใกล้เคียงกัน ไม่ใช่เพราะทั้งสามค่ามีความหมายเดียวกันทุก
-ประการ — สองตัวแรกนับจำนวนแถวตรงๆ ส่วน `min_child_weight` ของ XGBoost คือ threshold บนผลรวม Hessian (second
+ประการ — `min_samples_leaf` ของ Random Forest นับจำนวนแถวตรงๆ แบบ exact ส่วน `min_child_samples` ของ LightGBM
+เป็นเป้าหมายจำนวนแถวเชิงประมาณเท่านั้น (เอกสารของ LightGBM เองระบุว่าคำนวณแบบ approximation จาก Hessian ทำให้
+บาง leaf อาจมีแถวน้อยกว่าค่านี้ได้) ส่วน `min_child_weight` ของ XGBoost คือ threshold บนผลรวม Hessian (second
 derivative) ของแถวใน leaf ซึ่งเท่ากับจำนวนแถวจริงก็ต่อเมื่อทุกแถวมี Hessian = 1 (เป็นจริงสำหรับ squared-error loss
 แต่ไม่ได้การันตีสำหรับ `reg:absoluteerror` ที่ใช้อยู่ที่นี่) ดูรายละเอียดใน comment ที่ `src/models/forecast.py`
 

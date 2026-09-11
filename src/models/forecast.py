@@ -15,6 +15,15 @@ from sklearn.ensemble import RandomForestRegressor
 
 TARGET = "target_next_week"
 
+# Explicit, shared thread count for every model below (was previously left as each
+# library's implicit default). LightGBM's own histogram-building is not guaranteed
+# bit-identical across runs when multithreaded unless deterministic=True is paired
+# with a forced build strategy (see DEFAULT_LGB_PARAMS) -- that pairing, not this
+# constant, is what makes LightGBM's results thread-count-invariant. Recorded here
+# mainly so the exact setting used to produce this repo's published numbers is on
+# the record, not implicit in whatever machine happened to run it.
+N_JOBS = 4
+
 ID_COLS = ["sku", "week", "target_next_week"]
 
 CATEGORICAL_COLS = ["sku", "channel", "region", "category", "segment", "brand", "lifecycle_stage"]
@@ -79,6 +88,17 @@ DEFAULT_LGB_PARAMS = dict(
     min_child_samples=20,
     verbosity=-1,
     random_state=42,
+    n_jobs=N_JOBS,
+    # A fixed random_state alone does not make LightGBM's results bit-identical
+    # across runs: multithreaded histogram building can sum floating-point values
+    # in a different order depending on thread scheduling. deterministic=True
+    # forces a reproducible build order, but LightGBM's docs say it must be paired
+    # with force_row_wise or force_col_wise to actually take effect (and warn that
+    # deterministic mode is slower and CPU-only) -- force_row_wise is used here
+    # since ALL_FEATURE_COLS is a modest, fixed-width feature set, not a very wide
+    # one where col-wise histogram building would be preferable.
+    deterministic=True,
+    force_row_wise=True,
 )
 
 
@@ -126,6 +146,7 @@ DEFAULT_XGB_PARAMS = dict(
     tree_method="hist",
     enable_categorical=True,
     random_state=42,
+    n_jobs=N_JOBS,
 )
 
 
@@ -219,7 +240,17 @@ DEFAULT_RF_PARAMS = dict(
     n_estimators=300,
     max_depth=None,
     min_samples_leaf=20,
-    n_jobs=-1,
+    # n_jobs=1, not N_JOBS: a fixed random_state alone does NOT make
+    # RandomForestRegressor bit-reproducible under joblib parallelism -- the per-tree
+    # predictions are still summed into the ensemble average in whatever order the
+    # parallel workers happen to finish in, and float addition isn't associative.
+    # Measured on this dataset: ~5e-14 max abs difference between runs at n_jobs=4,
+    # small enough to never move a reported WAPE digit, but enough to break a
+    # bit-for-bit reproducibility check. Unlike LightGBM there's no sklearn
+    # equivalent of deterministic=True to keep both parallelism and exact
+    # reproducibility, and the dataset here is small enough that n_jobs=1 costs
+    # little, so determinism wins.
+    n_jobs=1,
     random_state=42,
 )
 

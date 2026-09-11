@@ -67,9 +67,16 @@ category dtype/NaN แบบ native เหมือน LightGBM/XGBoost) ใช�
 
 ### ผลลัพธ์
 Global Pooled LightGBM ชนะเฉียดฉิว (WAPE 0.224) → กลายเป็น **"โมเดลหลัก"** ที่ใช้ต่อใน Phase 10 และ 11 — Global
-Pooled XGBoost (0.224) และ Global Pooled Random Forest (0.224) ให้ WAPE เท่ากันที่ทศนิยม 3 ตำแหน่ง และ paired
-t-test ระหว่าง LightGBM กับ XGBoost (คู่ที่ใกล้กันที่สุด) ให้ p = 0.401 — ไม่มีนัยสำคัญทางสถิติ ยืนยันว่าผลลัพธ์
-robust ข้าม library (boosting หรือ bagging) จริงๆ ไม่ได้ทำหน้าที่เป็นเพดานอ้างอิงหรือถูก carry ต่อไปยัง phase อื่น
+Pooled Random Forest ให้ WAPE เท่ากันที่ทศนิยม 3 ตำแหน่ง (0.224) ส่วน Global Pooled XGBoost อยู่ที่ 0.225 และ paired
+t-test ระหว่าง LightGBM กับ Random Forest (คู่ที่ใกล้กันที่สุดจริงๆ ตามค่าเฉลี่ย ไม่ใช่แค่ 2 ตัวที่ WAPE ต่ำสุด) ให้
+p = 0.606 — ไม่มีนัยสำคัญทางสถิติ ยืนยันว่าผลลัพธ์ robust ข้าม library (boosting หรือ bagging) จริงๆ ไม่ได้ทำหน้าที่เป็น
+เพดานอ้างอิงหรือถูก carry ต่อไปยัง phase อื่น
+
+**หมายเหตุเรื่อง reproducibility**: ตัวเลขข้างต้นมาจากการรันแบบ deterministic (LightGBM ตั้ง `deterministic=True` +
+`force_row_wise=True`, Random Forest รันแบบ single-thread `n_jobs=1`) เพราะพบว่า fixed `random_state` อย่างเดียว
+ไม่พอทำให้ผลลัพธ์เหมือนกันทุกครั้งที่รันใหม่เมื่อมี multithreading — ตัวเลขจาก commit ก่อนหน้านี้ (ที่ยังไม่ fix เรื่องนี้)
+คลาดเคลื่อนจากตัวเลขจริงไปเล็กน้อยในทศนิยมตำแหน่งที่ 3-4 ดู `requirements-lock.txt` สำหรับ package version ที่ใช้ผลิต
+ตัวเลขชุดนี้
 
 ---
 

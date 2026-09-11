@@ -89,11 +89,18 @@ Standard data science lifecycle, 16 phases mapped to numbered notebooks in `note
 - **Metrics**: WAPE/SMAPE alongside MAE/RMSE — MAPE is unstable at low SKU-week volumes.
 - **Base-table provenance**: built from raw data by this project's own code, not received pre-aggregated (see Data)
   - Re-running Phases 4–11 on it reproduced every headline result from the original run — a robustness check on the findings, not just a rebuild
+- **Reproducibility**: a fixed `random_state` alone doesn't make LightGBM or scikit-learn's
+  RandomForest bit-reproducible under multithreading — both have their own floating-point
+  summation-order nondeterminism independent of the seed. LightGBM runs with
+  `deterministic=True` + `force_row_wise=True`; RandomForest runs single-threaded
+  (`n_jobs=1`) since scikit-learn has no equivalent deterministic-parallel mode and the
+  dataset is small enough that this costs little. `requirements-lock.txt` pins the exact
+  package versions used to produce the numbers in this document.
 
 ## Tech Stack
 
 pandas, numpy, scikit-learn, LightGBM, XGBoost, statsmodels / linearmodels, matplotlib, seaborn,
-joblib, pytest (badges above).
+joblib, pytest (badges above). Exact pinned versions in `requirements-lock.txt`.
 
 ## Repository Structure
 
@@ -147,7 +154,7 @@ Forecasting FMCG Daily Sales/
 - [x] **Phase 6 — Baselines**: Moving Average (4w) is the best simple baseline, WAPE 0.243
 - [x] **Phase 7 — Core forecasting**: global pooled LightGBM wins, **WAPE 0.224**
   - Beats the baseline (0.243), local per-SKU LightGBM (0.257), and Holt-Winters ETS (0.301 vs. 0.214 for LightGBM on the same subset)
-  - XGBoost and Random Forest challengers score identically at 0.224 (paired t-test, p = 0.401 — not significant), confirming the result is robust to library choice
+  - Random Forest challenger scores identically at 0.224; XGBoost scores 0.225 (closest-pair paired t-test, LightGBM vs. Random Forest, p = 0.606 — not significant), confirming the result is robust to library choice
   - LightGBM carried forward as the primary model
 - [x] **Phase 8 — Promotion effect**: two-way fixed-effects regression finds **+28.4% uplift** [27.6%, 29.3%], p < 0.001
   - Consistent ~28–29% across all 5 categories
@@ -174,7 +181,7 @@ readers. `reports/final_report.md` stays in English for a hiring-manager audienc
 
 - **Forecasting**: global pooled LightGBM reaches **WAPE 0.224** on 7-fold walk-forward CV
   - Ahead of the best baseline (0.243), local per-SKU LightGBM (0.257), and Holt-Winters ETS (0.301 on the same top-5-series subset where LightGBM scores 0.214)
-  - Global pooled XGBoost and Random Forest score 0.224 too — a robustness check on library choice, not separate models carried forward — with a paired t-test confirming the difference isn't significant (p = 0.401)
+  - Global pooled Random Forest scores 0.224 too, XGBoost scores 0.225 — a robustness check on library choice, not separate models carried forward — with a paired t-test on the closest pair (LightGBM vs. Random Forest) confirming the difference isn't significant (p = 0.606)
 - **Promotions**: **+28.4% sales uplift** [27.6%, 29.3%], p < 0.001, consistent across all 5 categories
 - **Seasonality**: variance share ranges from 8% (Milk, trend-dominated) to 87% (SnackBar) — category-dependent, not a single business-wide factor
 - **Cold start**: both ML approaches clearly beat naive analog-matching at every SKU age; the full model held up from the first available week

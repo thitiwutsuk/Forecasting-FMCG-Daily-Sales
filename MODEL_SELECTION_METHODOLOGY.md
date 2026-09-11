@@ -69,7 +69,7 @@ derivative) ของแถวใน leaf ซึ่งเท่ากับจ�
 
 ### วิธีเปรียบเทียบ
 1. WAPE บน walk-forward CV fold **ชุดเดียวกัน** ทุกโมเดล (7 fold)
-2. เทียบ final holdout (10 สัปดาห์สุดท้าย ไม่เคยถูกแตะ) แยกต่างหากจาก CV average
+2. Final holdout (10 สัปดาห์สุดท้าย) แยกต่างหากจาก CV average — **ยังไม่ได้ทำ**, วางแผนไว้ที่ Phase 13 (ดู README) เพื่อรักษาความบริสุทธิ์ของชุดทดสอบสุดท้ายจนกว่าจะถึงเวลาประเมินจริง
 3. **เช็ค feature importance เพิ่ม** เพื่อยืนยันว่าโมเดลที่ชนะเรียนรู้อะไรที่สมเหตุสมผลจริง ไม่ใช่แค่ตัวเลขต่ำเพราะบังเอิญ
 4. **แกน library**: เทียบราย fold + standard deviation ระหว่าง LightGBM, XGBoost, Random Forest — ทดสอบนัยสำคัญ
    (paired t-test ข้าม fold) ของ **LightGBM (โมเดลหลัก) เทียบกับ challenger ทั้งสองตัวแยกกัน** คือ LightGBM vs
@@ -130,7 +130,7 @@ Paired t-test ของ LightGBM เทียบกับ challenger ทั้�
 | Phase | หลักการเลือกตัวเปรียบเทียบ | มิติที่ใช้ตัดสิน |
 |---|---|---|
 | Baseline | ครอบคลุมสมมติฐานง่ายๆ ที่ต่างกัน 3 แบบ | ตัวเลขเฉลี่ยตัวเดียว (หาเกณฑ์ขั้นต่ำ) |
-| Core Forecasting | แยกทดสอบ pooling × วิธีการ + เช็ค library axis (LightGBM vs XGBoost vs Random Forest) เพิ่ม | WAPE (CV + holdout) + ความสม่ำเสมอ + feature importance + std dev ราย fold + paired significance test (library axis) |
+| Core Forecasting | แยกทดสอบ pooling × วิธีการ + เช็ค library axis (LightGBM vs XGBoost vs Random Forest) เพิ่ม | WAPE (CV; holdout รอ Phase 13) + ความสม่ำเสมอ + feature importance + std dev ราย fold + paired significance test (library axis) |
 | Cold-Start | เทียบกลยุทธ์รับมือข้อมูลขาด 3 แบบ + มีเพดานอ้างอิง | WAPE แยกตามอายุสินค้า ไม่ใช่ค่าเฉลี่ยเดียว |
 
 ## หลักการร่วมที่ใช้ทุก Phase (ไม่เปลี่ยนแปลง)

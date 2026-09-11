@@ -156,10 +156,11 @@ Forecasting FMCG Daily Sales/
   - Beats the baseline (0.243), local per-SKU LightGBM (0.257), and Holt-Winters ETS (0.301 vs. 0.214 for LightGBM on the same subset)
   - Random Forest challenger scores identically at 0.224; XGBoost scores 0.225 — paired t-tests of LightGBM against each challenger (Holm-corrected for testing both) found no significant difference either way: XGBoost p = 0.297, Random Forest p = 0.606 — results are consistent with the result being robust to library choice (failure to reject isn't proof of equality; 7 folds isn't enough data to make that claim)
   - LightGBM carried forward as the primary model
-- [x] **Phase 8 — Promotion effect**: two-way fixed-effects regression finds **+28.4% uplift** [27.6%, 29.3%], p < 0.001
+- [x] **Phase 8 — Promotion effect**: two-way fixed-effects regression estimates a **+28.4% uplift** [27.6%, 29.3%], p < 0.001
   - Consistent ~28–29% across all 5 categories
+  - This is the current static TWFE estimate, not a proven causal uplift or evidence promotions pay for themselves — `promotion_flag` is a repeating on/off treatment (median 53.5 switches per series), so standard TWFE can be biased under treatment-effect heterogeneity with non-absorbing treatment; a negative-weights diagnostic and a post-promotion pull-forward check are still open (see `LITERATURE_GROUNDING.md` §3a)
 - [x] **Phase 9 — Seasonality & trend**: STL decomposition per category
-  - Seasonal variance share ranges from 8% (Milk, trend-dominated) to 87% (SnackBar)
+  - Seasonal variance share ranges from ~70% (Milk, per-SKU robustness check) to 87% (SnackBar); Milk's naive sum-of-SKUs figure of 8% was a SKU-count-growth artifact, not a real trend (see Key Findings below)
 - [x] **Phase 10 — Cold-start forecasting**: compared analog-matching vs. meta-learner vs. full model on 5 held-out new SKUs
   - Both ML approaches clearly beat analog-matching at every SKU age
 - [x] **Phase 11 — Feature ablation**: measured the accuracy contribution of every engineered feature
@@ -182,8 +183,8 @@ readers. `reports/final_report.md` stays in English for a hiring-manager audienc
 - **Forecasting**: global pooled LightGBM reaches **WAPE 0.224** on 7-fold walk-forward CV
   - Ahead of the best baseline (0.243), local per-SKU LightGBM (0.257), and Holt-Winters ETS (0.301 on the same top-5-series subset where LightGBM scores 0.214)
   - Global pooled Random Forest scores 0.224 too, XGBoost scores 0.225 — a robustness check on library choice, not separate models carried forward — paired t-tests against LightGBM (Holm-corrected for testing both challengers) found no significant difference either way (XGBoost p = 0.297, Random Forest p = 0.606)
-- **Promotions**: **+28.4% sales uplift** [27.6%, 29.3%], p < 0.001, consistent across all 5 categories
-- **Seasonality**: variance share ranges from 8% (Milk, trend-dominated) to 87% (SnackBar) — category-dependent, not a single business-wide factor
+- **Promotions**: two-way fixed-effects regression estimates a **+28.4% sales uplift** [27.6%, 29.3%], p < 0.001, consistent across all 5 categories — this is the current static TWFE estimate, not a proven causal uplift or proof promotions pay for themselves; treatment-effect heterogeneity/negative-weights bias (the treatment is repeating on/off, not staggered adoption) and post-promotion pull-forward remain untested
+- **Seasonality**: variance share ranges from ~70% (Milk) to 87% (SnackBar) — category-dependent, not a single business-wide factor. Milk's naive sum-of-SKUs STL initially looked trend-dominated (58% trend / 8% seasonal), but that was a SKU-count-growth artifact (Milk's active SKU count grew 2→7 over the window, and summing across a growing SKU count inflates the apparent trend); a per-SKU robustness check (STL on the per-SKU mean instead of the sum) flips it to ~70% seasonal / 22% trend, in line with the other categories. The per-SKU mean has its own limitation — it's noisier when few SKUs are active early in a series — so this isn't a universal replacement for the sum-based numbers, just the more credible read for Milk specifically
 - **Cold start**: both ML approaches clearly beat naive analog-matching at every SKU age; the full model held up from the first available week
 - **Feature value**: calendar/lifecycle features matter most, ahead of lag/rolling history; price and external enrichment add close to nothing incrementally
   - This is a predictive-value finding, distinct from promotion's causal effect above

@@ -108,3 +108,24 @@ def test_make_rf_frame_unseen_category_encodes_as_minus_one():
 
     assert X_val.loc[val_df["channel"] == "NewChannel", "channel"].iloc[0] == -1
     assert X_val.loc[val_df["channel"] == "Online", "channel"].iloc[0] != -1
+
+
+def test_fit_rf_categories_ignores_unused_levels_declared_on_the_dtype():
+    # Mirrors calling prepare_categoricals() on the FULL dataset (so the dtype carries
+    # every label that appears anywhere) and then slicing out a train fold whose rows
+    # happen not to contain one of those labels. train_df's own rows are Online/Retail
+    # only, but its category dtype -- inherited from the full-dataset cast -- still
+    # declares "FutureOnly" as a valid level. The vocabulary must reflect what's
+    # actually present in train_df's rows, not what the dtype merely allows, or a
+    # label with zero training rows would encode as a real code instead of -1.
+    full_df = pd.DataFrame({"channel": pd.Series(["Online", "Retail", "FutureOnly", "Online"], dtype="category")})
+    train_df = full_df.iloc[[0, 1, 3]]  # Online, Retail, Online -- FutureOnly never observed here
+    assert "FutureOnly" not in train_df["channel"].unique()
+    assert "FutureOnly" in train_df["channel"].cat.categories  # the dtype still declares it
+
+    categories = fit_rf_categories(train_df, ["channel"])
+    assert "FutureOnly" not in list(categories["channel"])
+
+    val_df = pd.DataFrame({"channel": pd.Series(["FutureOnly"], dtype="category")})
+    X_val = make_rf_frame(val_df, ["channel"], categories=categories)
+    assert X_val["channel"].iloc[0] == -1

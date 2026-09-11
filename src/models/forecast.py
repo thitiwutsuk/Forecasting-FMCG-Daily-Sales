@@ -201,15 +201,20 @@ def fit_rf_categories(train_df: pd.DataFrame, feature_cols: list) -> dict:
     category is missing from one side (e.g. a `sku` or `lifecycle_stage` value that
     doesn't occur in every CV fold). Fitting the vocabulary once on train_df and
     reusing it everywhere else removes that dependency on caller discipline.
+
+    Always derives the vocabulary from train_df's actually-observed values (via
+    .unique(), not .cat.categories), even when the column already has category dtype.
+    A categorical dtype's .cat.categories reflects every level declared on the dtype,
+    which can include levels with zero rows in train_df -- e.g. when the caller ran
+    prepare_categoricals() on the full dataset before splitting, so train_df's dtype
+    still carries labels that only occur in validation weeks. Reading .cat.categories
+    in that case would silently admit those never-seen-in-training labels into the
+    vocabulary instead of routing them through the unseen-category (-1) path below.
     """
     categories = {}
     for col in CATEGORICAL_COLS:
         if col in feature_cols and col in train_df.columns:
-            observed = train_df[col]
-            if isinstance(observed.dtype, pd.CategoricalDtype):
-                categories[col] = observed.cat.categories
-            else:
-                categories[col] = pd.Index(sorted(observed.dropna().unique()))
+            categories[col] = pd.Index(sorted(train_df[col].dropna().unique()))
     return categories
 
 

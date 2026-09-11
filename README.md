@@ -1,17 +1,17 @@
 # FMCG Weekly Sales Forecasting
 
-![Python](https://img.shields.io/badge/Python-3.9-3776AB?style=flat&logo=python&logoColor=white&labelColor=1a1a2e)
-![pandas](https://img.shields.io/badge/Pandas-2.3-150458?style=flat&logo=pandas&logoColor=white&labelColor=1a1a2e)
-![NumPy](https://img.shields.io/badge/NumPy-2.0-013243?style=flat&logo=numpy&logoColor=white&labelColor=1a1a2e)
-![scikit-learn](https://img.shields.io/badge/scikit--learn-1.6-F7931E?style=flat&logo=scikitlearn&logoColor=white&labelColor=1a1a2e)
-![LightGBM](https://img.shields.io/badge/LightGBM-4.6-3499CD?style=flat&labelColor=1a1a2e)
-![XGBoost](https://img.shields.io/badge/XGBoost-3.4-006ACC?style=flat&labelColor=1a1a2e)
-![statsmodels](https://img.shields.io/badge/statsmodels-0.14-8CAAE6?style=flat&labelColor=1a1a2e)
-![Matplotlib](https://img.shields.io/badge/Matplotlib-3.9-11557C?style=flat&logo=matplotlib&logoColor=white&labelColor=1a1a2e)
-![Jupyter](https://img.shields.io/badge/Jupyter-Notebook-F37626?style=flat&logo=jupyter&logoColor=white&labelColor=1a1a2e)
-![License](https://img.shields.io/badge/License-MIT-4CAF50?style=flat&labelColor=1a1a2e)
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![pandas](https://img.shields.io/badge/Pandas-150458?style=for-the-badge&logo=pandas&logoColor=white)
+![NumPy](https://img.shields.io/badge/NumPy-013243?style=for-the-badge&logo=numpy&logoColor=white)
+![scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=for-the-badge&logo=scikitlearn&logoColor=white)
+![LightGBM](https://img.shields.io/badge/LightGBM-3499CD?style=for-the-badge&logoColor=white)
+![XGBoost](https://img.shields.io/badge/XGBoost-006ACC?style=for-the-badge&logoColor=white)
+![statsmodels](https://img.shields.io/badge/statsmodels-8CAAE6?style=for-the-badge&logoColor=white)
+![Matplotlib](https://img.shields.io/badge/Matplotlib-11557C?style=for-the-badge&logo=matplotlib&logoColor=white)
+![Jupyter](https://img.shields.io/badge/Jupyter-F37626?style=for-the-badge&logo=jupyter&logoColor=white)
+![License](https://img.shields.io/badge/MIT_License-4CAF50?style=for-the-badge&logoColor=white)
 
-![Progress](https://img.shields.io/badge/Progress-Complete_(12%2F16)-4CAF50?style=flat&labelColor=1a1a2e)
+![Progress](https://img.shields.io/badge/Progress_12%2F16-4CAF50?style=for-the-badge&logoColor=white)
 
 Demand forecasting, promotion effectiveness, and cold-start forecasting for a simulated
 multi-channel, multi-region FMCG business.

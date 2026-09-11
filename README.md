@@ -49,18 +49,16 @@ cases rather than synthetic ones.
 
 **Data quality issues found and fixed while deriving the base table** (rather than copied from
 the given files):
-- `avg_temp`/`inflation_index` varied by sales channel — physically implausible, and noisier than
-  the true 3-year signal. Regenerated deterministically at the correct grain (region×week / week).
-  **Note:** the regenerated values are synthetic, seeded stand-ins (not real weather/inflation
-  records) — appropriate for this simulated dataset, but a "no incremental value" finding on these
-  columns (Phase 11) is about these specific proxies, not a claim that real external data wouldn't
-  help actual demand planning.
-- `is_holiday_week`/`is_holiday_peak` follow no reconstructible rule in the given table (best
-  achievable match against several Polish-holiday hypotheses: ~95%, with an inconsistent
-  mismatch pattern). Redefined from a correct Polish public-holiday calendar instead.
-- `sku_age` must anchor to a SKU's first sale across *all* channels/regions, not per group — 14/270
-  groups start selling after their SKU's true launch elsewhere, which silently miscomputes age
-  (and the `lifecycle_stage` derived from it) if anchored per-group.
+- **`avg_temp` / `inflation_index`**: varied by sales channel — physically implausible
+  - Regenerated deterministically at the correct grain (region×week / week)
+  - Note: regenerated values are synthetic, seeded stand-ins, not real records — the "no
+    incremental value" finding (Phase 11) is about these specific proxies only
+- **`is_holiday_week` / `is_holiday_peak`**: no reconstructible rule in the given table (~95%
+  best match against several Polish-holiday hypotheses, with an inconsistent mismatch pattern)
+  - Redefined from a correct Polish public-holiday calendar instead
+- **`sku_age`**: must anchor to a SKU's first sale across *all* channels/regions, not per group
+  - 14/270 groups start selling after their SKU's true launch elsewhere, which silently
+    miscomputes age (and the `lifecycle_stage` derived from it) if anchored per-group
 
 ## Methodology
 
@@ -85,9 +83,8 @@ Standard data science lifecycle, 16 phases mapped to numbered notebooks in `note
 - **Cold start**: validated against real staggered SKU launches; analog-matching vs. a
   meta-learner restricted to features available at launch time.
 - **Metrics**: WAPE/SMAPE alongside MAE/RMSE — MAPE is unstable at low SKU-week volumes.
-- **Base-table provenance**: built from raw data by this project's own code, not received
-  pre-aggregated (see Data). Re-running Phases 4–11 on it reproduced every headline result from
-  the original run — a robustness check on the findings, not just a rebuild.
+- **Base-table provenance**: built from raw data by this project's own code, not received pre-aggregated (see Data)
+  - Re-running Phases 4–11 on it reproduced every headline result from the original run — a robustness check on the findings, not just a rebuild
 
 ## Tech Stack
 
@@ -128,20 +125,35 @@ Forecasting FMCG Daily Sales/
 - [x] **Phase 1 — Repo & environment**: folder structure, `requirements.txt`, git/GitHub, README
 
 ### Data Understanding
-- [x] **Phase 2 — EDA**: profiled all data files; found 3 rows with impossible negative values; confirmed roll-up integrity, no target leakage, and staggered SKU launches usable for cold-start
+- [x] **Phase 2 — EDA**: profiled all data files and confirmed the data is fit for modeling
+  - Found 3 rows with impossible negative values
+  - Confirmed roll-up integrity and no target leakage
+  - Confirmed staggered SKU launches are usable for cold-start
 
 ### Data Preparation
-- [x] **Phase 3 — Data validation**: duplicate/leakage checks (all pass); negative-value rows clipped to 0
-- [x] **Phase 4 — Weekly base table & feature engineering**: rebuilt the entire weekly table from raw daily data (see Data); diagnosed and fixed the enrichment bug; generalized enrichment to all 30 SKUs; added 4 hypothesis-driven features; added regression tests (`tests/test_build_weekly_base.py`)
-- [x] **Phase 5 — Split strategy**: panel-aware walk-forward CV (7 folds + untouched final holdout), zero train/validation overlap verified
+- [x] **Phase 3 — Data validation**: duplicate/leakage checks all pass; negative-value rows clipped to 0
+- [x] **Phase 4 — Weekly base table & feature engineering**: rebuilt the entire weekly table from raw daily data (see Data)
+  - Diagnosed and fixed the enrichment bug
+  - Generalized enrichment to all 30 SKUs
+  - Added 4 hypothesis-driven features
+  - Added regression tests (`tests/test_build_weekly_base.py`)
+- [x] **Phase 5 — Split strategy**: panel-aware walk-forward CV — 7 folds plus an untouched final holdout, zero train/validation overlap verified
 
 ### Modeling
-- [x] **Phase 6 — Baselines**: Moving Average (4w) best simple baseline, WAPE 0.243
-- [x] **Phase 7 — Core forecasting**: global pooled LightGBM wins, **WAPE 0.224** — beats local per-SKU LightGBM (0.257), the baseline, and Holt-Winters ETS (0.301 vs. 0.214 for LightGBM on the same subset); global pooled XGBoost and Random Forest challengers score identically at 0.224 (fold-level std dev + paired t-test checked, p = 0.401, not significant), confirming the result is robust to library choice (boosting or bagging), not an artifact of one implementation; LightGBM carried forward as the primary model
-- [x] **Phase 8 — Promotion effect**: two-way fixed-effects regression, **+28.4% uplift [27.6%, 29.3%], p < 0.001**, consistent ~28–29% across all 5 categories
-- [x] **Phase 9 — Seasonality & trend**: STL decomposition per category — seasonal variance share from 8% (Milk, trend-dominated) to 87% (SnackBar)
-- [x] **Phase 10 — Cold-start forecasting**: analog-matching vs. meta-learner vs. full model on 5 held-out new SKUs — both ML approaches clearly beat analog matching at every age
-- [x] **Phase 11 — Feature ablation**: calendar/lifecycle features matter most to accuracy, ahead of lag/rolling history; price and external enrichment add ~0 incrementally
+- [x] **Phase 6 — Baselines**: Moving Average (4w) is the best simple baseline, WAPE 0.243
+- [x] **Phase 7 — Core forecasting**: global pooled LightGBM wins, **WAPE 0.224**
+  - Beats the baseline (0.243), local per-SKU LightGBM (0.257), and Holt-Winters ETS (0.301 vs. 0.214 for LightGBM on the same subset)
+  - XGBoost and Random Forest challengers score identically at 0.224 (paired t-test, p = 0.401 — not significant), confirming the result is robust to library choice
+  - LightGBM carried forward as the primary model
+- [x] **Phase 8 — Promotion effect**: two-way fixed-effects regression finds **+28.4% uplift** [27.6%, 29.3%], p < 0.001
+  - Consistent ~28–29% across all 5 categories
+- [x] **Phase 9 — Seasonality & trend**: STL decomposition per category
+  - Seasonal variance share ranges from 8% (Milk, trend-dominated) to 87% (SnackBar)
+- [x] **Phase 10 — Cold-start forecasting**: compared analog-matching vs. meta-learner vs. full model on 5 held-out new SKUs
+  - Both ML approaches clearly beat analog-matching at every SKU age
+- [x] **Phase 11 — Feature ablation**: measured the accuracy contribution of every engineered feature
+  - Calendar/lifecycle features matter most, ahead of lag/rolling history
+  - Price and external enrichment add ~0 incrementally
 
 ### Evaluation
 - [ ] **Phase 12 — Model evaluation rollup**: consolidate all models into one comparison table
@@ -156,11 +168,15 @@ readers. `reports/final_report.md` stays in English for a hiring-manager audienc
 
 ## Key Findings
 
-- **Forecasting**: Global pooled LightGBM reaches **WAPE 0.224** on 7-fold walk-forward CV, ahead of the best baseline (0.243), local per-SKU LightGBM (0.257), and Holt-Winters ETS (0.301 on the same top-5-series subset where LightGBM scores 0.214). Global pooled XGBoost and Random Forest runs on identical folds/features both score 0.224 too — a robustness check on the library choice (boosting vs. bagging), not separate models carried forward — with a paired t-test confirming the differences aren't statistically significant (p = 0.401)
-- **Promotions**: **+28.4% sales uplift [27.6%, 29.3%], p < 0.001**, consistent across all 5 categories
+- **Forecasting**: global pooled LightGBM reaches **WAPE 0.224** on 7-fold walk-forward CV
+  - Ahead of the best baseline (0.243), local per-SKU LightGBM (0.257), and Holt-Winters ETS (0.301 on the same top-5-series subset where LightGBM scores 0.214)
+  - Global pooled XGBoost and Random Forest score 0.224 too — a robustness check on library choice, not separate models carried forward — with a paired t-test confirming the difference isn't significant (p = 0.401)
+- **Promotions**: **+28.4% sales uplift** [27.6%, 29.3%], p < 0.001, consistent across all 5 categories
 - **Seasonality**: variance share ranges from 8% (Milk, trend-dominated) to 87% (SnackBar) — category-dependent, not a single business-wide factor
 - **Cold start**: both ML approaches clearly beat naive analog-matching at every SKU age; the full model held up from the first available week
-- **Feature value**: calendar/lifecycle features matter most, ahead of lag/rolling history; price and external enrichment add close to nothing incrementally — a predictive-value finding, distinct from promotion's causal effect above. Caveat: `avg_temp`/`inflation_index` are synthetic, deterministic stand-ins (see Data), not real weather/inflation records, and are largely redundant with `month`/`is_summer`/`is_winter` already in the model — so this result shows those *specific proxies* add nothing here, not that real external data wouldn't help actual FMCG demand planning
+- **Feature value**: calendar/lifecycle features matter most, ahead of lag/rolling history; price and external enrichment add close to nothing incrementally
+  - This is a predictive-value finding, distinct from promotion's causal effect above
+  - Caveat: `avg_temp`/`inflation_index` are synthetic, deterministic stand-ins (see Data) largely redundant with `month`/`is_summer`/`is_winter` already in the model — this shows those *specific proxies* add nothing here, not that real external data wouldn't help actual FMCG demand planning
 
 Every finding above was reproduced by re-running Phases 4–11 on an independently rebuilt weekly
 base table (see Data), with every headline number matching the original run within rounding.

@@ -162,19 +162,51 @@ def fit_xgb(train_df: pd.DataFrame, feature_cols: Optional[list] = None, params:
     return model
 
 
-def make_rf_frame(df: pd.DataFrame, feature_cols: list) -> pd.DataFrame:
+def fit_rf_categories(train_df: pd.DataFrame, feature_cols: list) -> dict:
+    """Fix each categorical column's code<->label vocabulary from training data only.
+
+    Encoding train and validation frames independently (the original bug here) lets
+    each frame invent its own code order from whatever categories happen to appear in
+    it, so the same code can mean a different label in train vs. validation whenever a
+    category is missing from one side (e.g. a `sku` or `lifecycle_stage` value that
+    doesn't occur in every CV fold). Fitting the vocabulary once on train_df and
+    reusing it everywhere else removes that dependency on caller discipline.
+    """
+    categories = {}
+    for col in CATEGORICAL_COLS:
+        if col in feature_cols and col in train_df.columns:
+            observed = train_df[col]
+            if isinstance(observed.dtype, pd.CategoricalDtype):
+                categories[col] = observed.cat.categories
+            else:
+                categories[col] = pd.Index(sorted(observed.dropna().unique()))
+    return categories
+
+
+def make_rf_frame(df: pd.DataFrame, feature_cols: list, categories: Optional[dict] = None) -> pd.DataFrame:
     """Select feature columns for Random Forest: sklearn's RandomForestRegressor has no
     native categorical support (unlike LightGBM/XGBoost) and rejects NaN, so categoricals
-    are ordinal-encoded via .cat.codes and promo_recency's legitimate "never promoted"
-    NaNs (see README Data section) are filled with a distinct out-of-range sentinel so
-    trees can still split those rows apart from real recency values.
+    are ordinal-encoded and promo_recency's legitimate "never promoted" NaNs (see README
+    Data section) are filled with a distinct out-of-range sentinel so trees can still
+    split those rows apart from real recency values.
+
+    `categories`, normally from fit_rf_categories(train_df, feature_cols), pins each
+    categorical column to a training-derived vocabulary so codes line up between train
+    and validation/prediction frames; a value unseen in that vocabulary encodes as -1
+    (same sentinel as the promo_recency NaN fill, in a different column so no collision).
+    Without `categories` (default), each column is encoded independently from whatever
+    rows are in `df` — kept only for backward compatibility with single-frame callers;
+    prefer always passing `categories` when train and validation are encoded separately.
     """
     X = df[feature_cols].copy()
     for col in CATEGORICAL_COLS:
         if col in X.columns:
-            if not isinstance(X[col].dtype, pd.CategoricalDtype):
-                X[col] = X[col].astype("category")
-            X[col] = X[col].cat.codes
+            if categories is not None and col in categories:
+                X[col] = X[col].astype("category").cat.set_categories(categories[col]).cat.codes
+            else:
+                if not isinstance(X[col].dtype, pd.CategoricalDtype):
+                    X[col] = X[col].astype("category")
+                X[col] = X[col].cat.codes
     if "promo_recency" in X.columns:
         X["promo_recency"] = X["promo_recency"].fillna(-1)
     return X
@@ -202,13 +234,17 @@ def fit_predict_rf(
 
     Same global-pooled scheme as fit_predict_lgb/fit_predict_xgb; frame prep differs
     (make_rf_frame, not make_lgb_frame) because sklearn RF needs numeric, NaN-free input.
+    Categorical vocabulary is fit on train_df only (fit_rf_categories) and reused for
+    val_df, so a category missing from one split can't shift the other's codes; a
+    category unseen in train_df encodes as -1 in val_df.
     """
     feature_cols = feature_cols or ALL_FEATURE_COLS
     params = {**DEFAULT_RF_PARAMS, **(params or {})}
 
-    X_train = make_rf_frame(train_df, feature_cols)
+    categories = fit_rf_categories(train_df, feature_cols)
+    X_train = make_rf_frame(train_df, feature_cols, categories=categories)
     y_train = train_df[TARGET].values
-    X_val = make_rf_frame(val_df, feature_cols)
+    X_val = make_rf_frame(val_df, feature_cols, categories=categories)
 
     model = RandomForestRegressor(**params)
     model.fit(X_train, y_train)
@@ -216,13 +252,30 @@ def fit_predict_rf(
 
 
 def fit_rf(train_df: pd.DataFrame, feature_cols: Optional[list] = None, params: Optional[dict] = None) -> RandomForestRegressor:
+    """Train one RandomForestRegressor on train_df.
+
+    The categorical vocabulary is fit on train_df and stashed on the returned model as
+    `.rf_categories_` so a later predict_rf() call encodes new data the same way
+    instead of re-deriving (and potentially drifting) its own vocabulary.
+    """
     feature_cols = feature_cols or ALL_FEATURE_COLS
     params = {**DEFAULT_RF_PARAMS, **(params or {})}
-    X_train = make_rf_frame(train_df, feature_cols)
+    categories = fit_rf_categories(train_df, feature_cols)
+    X_train = make_rf_frame(train_df, feature_cols, categories=categories)
     y_train = train_df[TARGET].values
     model = RandomForestRegressor(**params)
     model.fit(X_train, y_train)
+    model.rf_categories_ = categories
+    model.rf_feature_cols_ = feature_cols
     return model
+
+
+def predict_rf(model: RandomForestRegressor, df: pd.DataFrame, feature_cols: Optional[list] = None) -> np.ndarray:
+    """Predict with a model from fit_rf(), reusing its training-time categorical vocabulary."""
+    feature_cols = feature_cols or getattr(model, "rf_feature_cols_", None) or ALL_FEATURE_COLS
+    categories = getattr(model, "rf_categories_", None)
+    X = make_rf_frame(df, feature_cols, categories=categories)
+    return model.predict(X)
 
 
 def fit_predict_local_per_sku(train_df: pd.DataFrame, val_df: pd.DataFrame, feature_cols: Optional[list] = None) -> np.ndarray:

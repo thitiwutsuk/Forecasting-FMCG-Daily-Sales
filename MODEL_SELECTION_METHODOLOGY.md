@@ -86,8 +86,9 @@ Paired t-test ของ LightGBM เทียบกับ challenger ทั้�
 
 ไม่พบความแตกต่างที่มีนัยสำคัญทางสถิติกับ challenger ทั้งสองตัว (ใช้คำว่า "ไม่พบความแตกต่างที่มีนัยสำคัญ" อย่างตั้งใจ
 แทน "พิสูจน์แล้วว่าเท่ากัน" — การไม่ reject H0 ไม่ใช่หลักฐานว่าไม่มีความต่างเลย เพียงแต่ข้อมูล 7 folds ไม่พอจะสรุปว่าต่าง
-อย่างมีนัยสำคัญ) ยืนยันว่าผลลัพธ์ robust ข้าม library (boosting หรือ bagging) จริงๆ ไม่ได้ทำหน้าที่เป็นเพดานอ้างอิงหรือ
-ถูก carry ต่อไปยัง phase อื่น
+อย่างมีนัยสำคัญ) ผลลัพธ์นี้จึง**สอดคล้องกับ**การที่ผลลัพธ์ robust ข้าม library (boosting หรือ bagging) — ไม่ใช่การ
+"พิสูจน์" ความเท่ากัน (การจะอ้างแบบนั้นได้ต้องกำหนด equivalence margin ไว้ล่วงหน้า ซึ่งการทดลองนี้ไม่ได้ทำ) XGBoost
+และ Random Forest ไม่ได้ทำหน้าที่เป็นเพดานอ้างอิงหรือถูก carry ต่อไปยัง phase อื่น
 
 **หมายเหตุเรื่อง reproducibility**: ตัวเลขข้างต้นมาจากการรันแบบ deterministic (LightGBM ตั้ง `deterministic=True` +
 `force_row_wise=True`, Random Forest รันแบบ single-thread `n_jobs=1`) เพราะพบว่า fixed `random_state` อย่างเดียว

@@ -154,7 +154,7 @@ Forecasting FMCG Daily Sales/
 - [x] **Phase 6 — Baselines**: Moving Average (4w) is the best simple baseline, WAPE 0.243
 - [x] **Phase 7 — Core forecasting**: global pooled LightGBM wins, **WAPE 0.224**
   - Beats the baseline (0.243), local per-SKU LightGBM (0.257), and Holt-Winters ETS (0.301 vs. 0.214 for LightGBM on the same subset)
-  - Random Forest challenger scores identically at 0.224; XGBoost scores 0.225 — paired t-tests of LightGBM against each challenger (Holm-corrected for testing both) found no significant difference either way: XGBoost p = 0.297, Random Forest p = 0.606 — confirming the result is robust to library choice
+  - Random Forest challenger scores identically at 0.224; XGBoost scores 0.225 — paired t-tests of LightGBM against each challenger (Holm-corrected for testing both) found no significant difference either way: XGBoost p = 0.297, Random Forest p = 0.606 — results are consistent with the result being robust to library choice (failure to reject isn't proof of equality; 7 folds isn't enough data to make that claim)
   - LightGBM carried forward as the primary model
 - [x] **Phase 8 — Promotion effect**: two-way fixed-effects regression finds **+28.4% uplift** [27.6%, 29.3%], p < 0.001
   - Consistent ~28–29% across all 5 categories

@@ -7,7 +7,6 @@ statsmodels
 scipy
 linearmodels
 did-multiplegt-stat
-py-did-multiplegt-dyn
 matplotlib
 seaborn
 pyarrow

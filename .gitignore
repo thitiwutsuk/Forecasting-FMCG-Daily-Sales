@@ -11,3 +11,4 @@ env/
 _TEMPLATE*.ipynb
 _TEMPLATE.ipynb
 reports/promotion_panel_export.csv
+reports/promotion_twfe_weights_detail.csv

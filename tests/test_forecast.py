@@ -1,8 +1,11 @@
 """Regression tests for src/models/forecast.py's Random Forest frame prep.
 
 Locks in the isolation guarantee for make_rf_frame: it must not mutate the input
-DataFrame, and its output must be numeric/NaN-free (sklearn's RandomForestRegressor
-rejects both category dtype and NaN, unlike LightGBM/XGBoost). Also locks in that
+DataFrame, and its output must be numeric/NaN-free -- sklearn's RandomForestRegressor
+has no native category-dtype support (unlike LightGBM/XGBoost), so ordinal-encoding
+is required; the NaN fill is a deliberate modeling choice (see make_rf_frame's
+docstring), not a library requirement -- the pinned sklearn accepts NaN natively.
+Also locks in that
 categorical codes stay consistent between train and validation frames when encoded
 via fit_rf_categories()/make_rf_frame(..., categories=...) — the bug this file was
 originally missing coverage for: encoding train_df and val_df independently let the

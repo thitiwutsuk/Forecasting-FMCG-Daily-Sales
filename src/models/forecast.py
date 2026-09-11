@@ -225,10 +225,14 @@ def fit_rf_categories(train_df: pd.DataFrame, feature_cols: list) -> dict:
 
 def make_rf_frame(df: pd.DataFrame, feature_cols: list, categories: Optional[dict] = None) -> pd.DataFrame:
     """Select feature columns for Random Forest: sklearn's RandomForestRegressor has no
-    native categorical support (unlike LightGBM/XGBoost) and rejects NaN, so categoricals
-    are ordinal-encoded and promo_recency's legitimate "never promoted" NaNs (see README
-    Data section) are filled with a distinct out-of-range sentinel so trees can still
-    split those rows apart from real recency values.
+    native categorical support (unlike LightGBM/XGBoost), so categoricals are ordinal-
+    encoded here regardless of sklearn version. promo_recency's legitimate "never
+    promoted" NaNs (see README Data section) are filled with a distinct out-of-range
+    sentinel so trees can still split those rows apart from real recency values --
+    this is a modeling choice, not a library requirement: the pinned sklearn (1.9;
+    NaN support for the squared-error criterion landed in 1.4) accepts NaN directly,
+    but an explicit sentinel keeps "never promoted" a single well-defined value
+    instead of leaving its treatment to sklearn's internal missing-value splitting.
 
     `categories`, normally from fit_rf_categories(train_df, feature_cols), pins each
     categorical column to a training-derived vocabulary so codes line up between train

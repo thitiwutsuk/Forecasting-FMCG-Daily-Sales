@@ -52,8 +52,10 @@
 **แกนที่ 3 (library) เพิ่มเข้ามาทีหลัง** ในฐานะ **robustness/challenger check** ไม่ใช่ส่วนหนึ่งของการออกแบบ 2 แกนดั้งเดิม:
 Global pooled XGBoost (`reg:absoluteerror`, ฟีเจอร์/categorical handling/fold ชุดเดียวกับ Global pooled LightGBM
 ทุกประการ) และ Global pooled Random Forest (`sklearn.RandomForestRegressor` — bagging แทน boosting, ต้อง
-ordinal-encode categorical columns และเติมค่า `promo_recency` ที่เป็น NaN ด้วย sentinel เพราะ sklearn RF ไม่รองรับ
-category dtype/NaN แบบ native เหมือน LightGBM/XGBoost) ใช้ตรวจว่าผลของ Global pooled LightGBM ไม่ได้ดีเพราะบังเอิญ
+ordinal-encode categorical columns เพราะ sklearn RF ไม่รองรับ category dtype แบบ native เหมือน LightGBM/XGBoost
+ส่วนค่า `promo_recency` ที่เป็น NaN เติมด้วย sentinel เป็นทางเลือกเชิงโมเดลเพื่อให้ต้นไม้แยกแถวเหล่านี้ออกจากค่า
+recency จริงได้ ไม่ใช่ข้อจำกัดของไลบรารี — sklearn เวอร์ชันที่ pin ไว้ (1.9) รองรับ NaN โดยตรงอยู่แล้วตั้งแต่ 1.4)
+ใช้ตรวจว่าผลของ Global pooled LightGBM ไม่ได้ดีเพราะบังเอิญ
 เจาะจงกับ implementation ตัวเดียว — เทียบราย fold พร้อม standard deviation และ paired significance test (ไม่ใช่แค่
 ค่าเฉลี่ยตัวเดียว) ดู [`07_core_forecasting.ipynb`](notebooks/07_core_forecasting.ipynb) ส่วนที่ 2-3
 

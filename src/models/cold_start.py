@@ -14,9 +14,23 @@ def find_analog_sku(target_sku: str, sku_attrs: pd.DataFrame, candidate_skus: li
     """Nearest existing SKU by category -> segment -> pack_type exact match, tie-broken
     by closest price_unit. Falls back to progressively coarser matches (category+pack_type,
     then category only) if no exact category+segment+pack_type match exists.
+
+    `sku_attrs` must have a `first_seen` column (each SKU's first-observation date).
+    The candidate pool is restricted to SKUs that launched strictly before target_sku
+    -- a real cold-start forecast can only ever borrow from products that already
+    existed at the time, so a candidate launched later (even if it's the closest match
+    on category/segment/pack_type/price) is not a valid analog and must be excluded
+    before similarity matching, not just deprioritized by it.
     """
     target = sku_attrs.loc[target_sku]
     pool = sku_attrs.loc[sku_attrs.index.isin(candidate_skus)]
+    pool = pool[pool["first_seen"] < target["first_seen"]]
+    if pool.empty:
+        raise ValueError(
+            f"no temporally-eligible analog for {target_sku!r}: none of the "
+            f"{len(candidate_skus)} candidate SKUs launched before it "
+            f"({pd.Timestamp(target['first_seen']).date()})"
+        )
 
     for keys in (["category", "segment", "pack_type"], ["category", "pack_type"], ["category"]):
         mask = (pool[keys] == target[keys]).all(axis=1)
@@ -30,6 +44,9 @@ def find_analog_sku(target_sku: str, sku_attrs: pd.DataFrame, candidate_skus: li
 def analog_forecast(df: pd.DataFrame, cold_start_skus: list, sku_attrs: pd.DataFrame) -> pd.DataFrame:
     """For each cold-start SKU, forecast target_next_week using the matched analog SKU's
     own units_sold at the same (channel, region, sku_age) — i.e. its early trajectory.
+
+    `sku_attrs` must include a `first_seen` column (see find_analog_sku) so the match is
+    restricted to SKUs that actually existed yet at the target's launch time.
     """
     mature_skus = [s for s in df["sku"].unique() if s not in cold_start_skus]
     analogs = {sku: find_analog_sku(sku, sku_attrs, mature_skus) for sku in cold_start_skus}

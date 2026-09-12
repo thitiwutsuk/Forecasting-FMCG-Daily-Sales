@@ -1,15 +1,33 @@
-"""Preliminary, leakage-aware comparison of weekly and daily forecasting grains.
+"""Preliminary sensitivity analysis: weekly vs. daily forecasting grain.
 
-This is deliberately a diagnostic rather than a replacement for the Phase 7 model.
-It compares two compact LightGBM specifications on the existing Phase 5 folds:
+Status: preliminary / exploratory, not a confirmatory result and not a replacement
+for the Phase 7 model. See analysis/GRANULARITY_AND_STOCK_FINDINGS.md for the full
+write-up, hedged claims, and open caveats -- read that before quoting any number
+printed by this script in the final report.
 
-1. direct weekly: one next-week total per SKU/channel/region;
+Three LightGBM specifications are compared on the existing Phase 5 walk-forward folds:
+
+1. direct weekly (this script's compact baseline): one next-week total per
+   SKU/channel/region, fixed before that week begins.
 2. daily fixed-origin: seven daily forecasts made from information available at the
-   end of the origin week, then summed to the same next-week total.
+   end of the origin week only, then summed to the same next-week total. Source-date
+   assertions check the daily lag timestamps; a separate assertion checks that the
+   seven targets reconstruct the project's own target_next_week. This is the fair,
+   same-origin comparison against (1).
+3. daily rolling: one-day-ahead forecasts that use actual sales from days already
+   past within the target week. This is not leakage -- a system that reforecasts
+   daily is legitimately allowed to see those days -- but it answers a different
+   question (a reforecast-every-day service) than a plan frozen before the week
+   starts, so it is not a fair comparison to (1) or (2).
 
 Missing daily rows are filled as zero sales because the project's weekly sum treats
 an absent row as contributing zero. That is an assumption, not proof that the source
-data records true zero-demand days this way.
+data records true zero-demand days this way -- daily_panel_completeness() quantifies
+how much of the daily targets this assumption actually touches (~15% of rows).
+
+7 walk-forward folds share overlapping expanding-window training data, so they are
+not independent samples; p-values below should be read as exploratory evidence of
+direction and rough magnitude, not as a confirmatory significance test.
 """
 
 from pathlib import Path
@@ -118,6 +136,15 @@ def prepare_daily_fixed_origin(
     out = pd.concat(rows, ignore_index=True)
     out = out.sort_values(KEYS + ["week", "horizon"]).reset_index(drop=True)
 
+    # Every daily lag must come from no later than Sunday at the end of the
+    # origin week. This is the actual temporal-leakage assertion; the target-sum
+    # assertion below checks outcome alignment, which is a separate property.
+    origin_end = out["week"] + pd.Timedelta(days=6)
+    for offset in [7, 14, 28]:
+        source_date = out["target_date"] - pd.Timedelta(days=offset)
+        if (source_date > origin_end).any():
+            raise AssertionError(f"daily_lag_{offset} uses data after the forecast origin")
+
     def lookup_for(offset: int) -> np.ndarray:
         idx = pd.MultiIndex.from_frame(
             out[KEYS].assign(date=out["target_date"] - pd.Timedelta(days=offset))
@@ -159,11 +186,13 @@ def prepare_daily_fixed_origin(
 
 
 def prepare_daily_rolling(daily: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
-    """One-day-ahead rows that may use actual sales from earlier validation days.
+    """One-day-ahead rows using actual sales already observed earlier that week.
 
-    This represents a forecast refreshed every day. Its weekly aggregate is useful as
-    a diagnostic, but it is not the same service level as a next-week forecast fixed
-    before that week begins.
+    Not leakage: a system that reforecasts daily is legitimately entitled to see
+    days that have already happened. It benefits from a later forecast origin and
+    daily information updates, so it answers a different question (a
+    reforecast-every-day service level) than a plan frozen before the week begins --
+    not directly comparable to the weekly or daily-fixed-origin variants above.
     """
     out = complete_daily_panel(daily).sort_values(KEYS + ["date"]).reset_index(drop=True)
     grouped = out.groupby(KEYS, observed=True, sort=False)["units_sold_daily"]
@@ -211,23 +240,135 @@ def fit_predict(train: pd.DataFrame, valid: pd.DataFrame, features: list[str], t
 
 
 def stock_audit(daily: pd.DataFrame) -> dict[str, float]:
+    """Checks two narrow claims only -- see the module docstring for what this does
+    and does not establish about how stock_available was actually generated."""
     ordered = daily.sort_values(["sku", "region", "date"]).copy()
     group = ordered.groupby(["sku", "region"], observed=True, sort=False)
     expected_next = np.maximum(
         0.0, ordered["stock_available"] + ordered["delivered_qty"] - ordered["units_sold"]
     )
     actual_next = group["stock_available"].shift(-1)
+    next_date = group["date"].shift(-1)
+    day_delta = (next_date - ordered["date"]).dt.days
     comparable = actual_next.notna()
+
+    def transition_counts(mask: pd.Series) -> tuple[int, int]:
+        return (
+            int(mask.sum()),
+            int(np.isclose(actual_next[mask], expected_next[mask]).sum()),
+        )
+
+    adjacent_n, adjacent_exact = transition_counts(comparable)
+    same_date_n, same_date_exact = transition_counts(comparable & day_delta.eq(0))
+    next_day_n, next_day_exact = transition_counts(comparable & day_delta.eq(1))
+    gap_n, gap_exact = transition_counts(comparable & day_delta.gt(1))
 
     channel_stock = daily.groupby(["sku", "region", "date"], observed=True).agg(
         channels=("channel", "nunique"), stocks=("stock_available", "nunique")
     )
     multi = channel_stock["channels"] >= 2
     return {
-        "transition_n": int(comparable.sum()),
-        "transition_exact": int(np.isclose(actual_next[comparable], expected_next[comparable]).sum()),
+        "adjacent_row_transitions": adjacent_n,
+        "adjacent_row_exact": adjacent_exact,
+        "same_date_transitions": same_date_n,
+        "same_date_exact": same_date_exact,
+        "next_calendar_day_transitions": next_day_n,
+        "next_calendar_day_exact": next_day_exact,
+        "gap_over_one_day_transitions": gap_n,
+        "gap_over_one_day_exact": gap_exact,
         "multi_channel_dates": int(multi.sum()),
         "same_stock_dates": int((channel_stock.loc[multi, "stocks"] == 1).sum()),
+    }
+
+
+def daily_panel_completeness(daily: pd.DataFrame) -> dict[str, float]:
+    """Fraction of the (sku, channel, region) daily panel actually present.
+
+    The daily_then_sum and daily_rolling targets fill absent dates as zero sales
+    (see complete_daily_panel). This quantifies how much of that target is real
+    versus that filled-in assumption.
+    """
+    span = daily.groupby(KEYS)["date"].agg(lambda s: (s.max() - s.min()).days + 1)
+    actual = daily.groupby(KEYS)["date"].nunique()
+    return {
+        "expected_days": int(span.sum()),
+        "actual_days": int(actual.sum()),
+        "present_fraction": float(actual.sum() / span.sum()),
+    }
+
+
+def daily_vs_weekly_noise(daily: pd.DataFrame, weekly: pd.DataFrame) -> dict[str, float]:
+    """Coefficient of variation of units_sold at each grain, per (sku, channel, region).
+
+    Supporting evidence for -- not proof of -- the hypothesis that a noisier daily
+    target partly explains daily_then_sum's higher WAPE. A higher CV does not by
+    itself establish that noise (rather than optimization-target mismatch, untuned
+    hyperparameters, or the ~15% filled-zero rows) is the mechanism.
+    """
+    def cv(s: pd.Series) -> float:
+        return float(s.std() / s.mean()) if s.mean() > 0 else np.nan
+
+    daily_cv = daily.groupby(KEYS)["units_sold"].apply(cv).mean()
+    weekly_cv = weekly.groupby(KEYS)["units_sold"].apply(cv).mean()
+    return {
+        "daily_cv": float(daily_cv),
+        "weekly_cv": float(weekly_cv),
+        "ratio": float(daily_cv / weekly_cv),
+    }
+
+
+def enrichment_semantics_audit(daily: pd.DataFrame, weekly_features_path: Path) -> dict[str, object]:
+    """Checks two claims about src/features/enrich.py's compute_internal_aggregates:
+
+    1. `deliveries=("delivery_days", "count")` -- delivery_days is a per-row lead-time
+       figure and never null, so the aggregation literally counts observed rows.
+       Because delivered_qty is positive on all but three validated rows, that count
+       is numerically almost the same as positive-delivery days. Whether it represents
+       delivery frequency or data completeness depends on what absent dates mean.
+    2. Both `stock_avg` and the weekly `stock_available` are independently checked
+       against a fresh group-week mean across every modeled row. Their calculation is
+       correct, but the two resulting model features are exact duplicates.
+    """
+    delivered_qty_positive_rate = float((daily["delivered_qty"] > 0).mean())
+    delivery_days_null_rate = float(daily["delivery_days"].isna().mean())
+
+    weekly = pd.read_csv(weekly_features_path, parse_dates=["week"])
+    daily_for_agg = daily.copy()
+    daily_for_agg["week"] = daily_for_agg["date"] - pd.to_timedelta(
+        daily_for_agg["date"].dt.dayofweek, unit="D"
+    )
+    daily_for_agg["positive_delivery"] = daily_for_agg["delivered_qty"].gt(0).astype(int)
+    recomputed = daily_for_agg.groupby(KEYS + ["week"], observed=True).agg(
+        recomputed_stock_mean=("stock_available", "mean"),
+        observed_rows=("delivery_days", "count"),
+        positive_delivery_days=("positive_delivery", "sum"),
+    ).reset_index()
+    audited = weekly.merge(
+        recomputed,
+        on=KEYS + ["week"],
+        how="left",
+        validate="one_to_one",
+    )
+
+    return {
+        "delivered_qty_positive_rate": delivered_qty_positive_rate,
+        "delivery_days_null_rate": delivery_days_null_rate,
+        "deliveries_value_counts": weekly["deliveries"].value_counts().sort_index().to_dict(),
+        "deliveries_equals_observed_rows_all": bool(
+            np.array_equal(audited["deliveries"], audited["observed_rows"])
+        ),
+        "deliveries_vs_positive_days_mismatched_rows": int(
+            (audited["deliveries"] != audited["positive_delivery_days"]).sum()
+        ),
+        "stock_avg_matches_recomputed_all": bool(
+            np.allclose(audited["stock_avg"], audited["recomputed_stock_mean"])
+        ),
+        "stock_available_matches_recomputed_all": bool(
+            np.allclose(audited["stock_available"], audited["recomputed_stock_mean"])
+        ),
+        "stock_avg_duplicates_stock_available_all": bool(
+            np.allclose(audited["stock_avg"], audited["stock_available"])
+        ),
     }
 
 
@@ -322,19 +463,52 @@ def main() -> None:
     print(results.to_string(index=False))
     print("\nMEANS")
     print(results.mean(numeric_only=True).to_string())
+    print(
+        "\nCAVEAT: 7 expanding-window folds share overlapping training data -- they are "
+        "not independent samples. The t-test below assumes independence and so overstates "
+        "confidence; Wilcoxon and the sign test are reported alongside it but do not fix "
+        "that non-independence either. Read all three as exploratory, not confirmatory."
+    )
     for comparison in [
         "daily_minus_weekly",
         "rolling_minus_weekly",
         "daily_minus_project",
         "rolling_minus_project",
     ]:
-        test = stats.ttest_1samp(results[comparison], popmean=0.0)
+        diffs = results[comparison].to_numpy()
+        t_test = stats.ttest_1samp(diffs, popmean=0.0)
+        wilcoxon = stats.wilcoxon(diffs)
+        n_pos = int((diffs > 0).sum())
+        sign = stats.binomtest(n_pos, len(diffs), 0.5, alternative="two-sided")
         print(
-            f"{comparison}: paired t={test.statistic:.4f}, p={test.pvalue:.6f}",
+            f"{comparison}: {n_pos}/{len(diffs)} folds positive, "
+            f"paired t={t_test.statistic:.4f} (p={t_test.pvalue:.4f}), "
+            f"wilcoxon p={wilcoxon.pvalue:.4f}, sign-test p={sign.pvalue:.4f}",
             flush=True,
         )
+    print(
+        "\nNOTE: daily_minus_project and rolling_minus_project compare against the "
+        "project's full-feature production model, which uses a different feature set "
+        "than the daily variants -- these two are confounded by feature-set differences, "
+        "not a clean read on granularity alone. daily_minus_weekly and rolling_minus_weekly "
+        "compare against this script's own compact weekly baseline (same feature philosophy, "
+        "same code path) and are the closer-to-apples-to-apples pair for a granularity claim."
+    )
+
+    print("\nDAILY_PANEL_COMPLETENESS")
+    print(daily_panel_completeness(daily))
+    print("\nDAILY_VS_WEEKLY_NOISE (coefficient of variation)")
+    print(daily_vs_weekly_noise(daily, weekly))
     print("\nSTOCK_AUDIT")
+    print(
+        "Rules out a single shared stock-available scalar copied across every channel, "
+        "and rules out Beata Faron's shared-pool snippet as the literal generator. Does "
+        "NOT establish that each channel's stock is fully independent -- a more complex "
+        "shared-allocation mechanism is not ruled out by this data alone."
+    )
     print(stock_audit(daily))
+    print("\nENRICHMENT_SEMANTICS_AUDIT (src/features/enrich.py compute_internal_aggregates)")
+    print(enrichment_semantics_audit(daily, ROOT / "data/processed/weekly_features.csv"))
 
 
 if __name__ == "__main__":

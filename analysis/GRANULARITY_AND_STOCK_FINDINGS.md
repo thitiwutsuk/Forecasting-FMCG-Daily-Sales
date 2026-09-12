@@ -83,6 +83,34 @@ forecast origin and daily information updates within the target week, so it is n
 directly comparable to a forecast frozen before the week begins. The correct reading
 is "no evidence either way from this comparison," not "daily ties or beats weekly."
 
+## Follow-up: separately tuned daily model closes the gap
+
+`analysis/tuned_daily_granularity_check.py` ran a small nine-configuration search
+using only the first three folds, locked the winning daily specification, and then
+evaluated it on the four later folds (31 weeks). The Phase 13 final 10-week holdout
+was not used. The selected model used enhanced same-weekday lag features, an L1
+objective, 15 leaves, and 40 minimum child samples.
+
+| Locked later-time evaluation | pooled WAPE |
+|---|---:|
+| Project weekly (full feature set) | **0.2205** |
+| Tuned daily fixed-origin, summed | **0.2219** |
+| Compact weekly | 0.2235 |
+
+The tuned daily model beat compact weekly in all four later folds. Its pooled WAPE
+advantage was 0.0016, and paired circular block-bootstrap intervals remained below
+zero with 2-, 4-, and 8-week blocks. Against the project weekly model, tuned daily
+was worse by 0.0014 WAPE, but every tested block-bootstrap interval crossed zero.
+
+This changes the practical conclusion: the untuned result is not robust evidence
+that weekly grain is intrinsically more accurate. Weekly remains the recommended
+primary model because it has the lowest observed WAPE, matches the business's
+next-week planning cadence, is simpler, and depends less on the assumption that
+missing daily panel rows represent zero sales. Tuned daily remains a credible
+challenger. The bootstrap is a sensitivity analysis over only 31 later weeks, not a
+confirmatory test, and the project-weekly comparison still mixes grain and feature-
+set differences.
+
 ## Candidate explanations for daily-then-sum's higher WAPE (not confirmed causes)
 
 Framed as "consistent with," not "caused by" — daily errors don't have to accumulate
@@ -162,9 +190,10 @@ Found while building the audits above, in `src/features/enrich.py`,
 
 ## What this analysis does not establish
 
-- That weekly is provably superior to daily for this forecasting problem in general
-  (only that this particular untuned daily specification lost on this particular
-  benchmark, across correlated folds).
+- That either grain is universally superior. The untuned daily model lost to compact
+  weekly, while the separately tuned daily model reversed that result on later folds
+  and remained statistically indistinguishable from the full-feature project weekly
+  model under the block-bootstrap sensitivity checks.
 - That `stock_available` is tracked independently per channel (ruled out one
   mechanism, not proved another).
 - No direct source-pipeline bug is established here. `deliveries` has ambiguous
@@ -173,11 +202,10 @@ Found while building the audits above, in `src/features/enrich.py`,
 
 ## If pursued further
 
-- Tune the daily model separately (hyperparameter search on the daily objective, or
-  switch its loss to something closer to WAPE) before concluding weekly's advantage
-  is about granularity rather than tuning effort.
-- A block-bootstrap or fold-shuffling scheme to get a defensible confidence interval
-  given the folds' non-independence, instead of the plain paired t-test.
+- Run a broader, nested search with feature-set parity between weekly and daily;
+  preserve the Phase 13 holdout until the final comparison is pre-specified.
+- Repeat the block-bootstrap conclusion on a longer independent time period; the
+  current 31-week sensitivity window is still small.
 - Decide whether `deliveries` should explicitly count positive `delivered_qty` days
   or be documented as an observed-row count, after clarifying what absent dates
   mean. Remove or justify the duplicate `stock_avg`/`stock_available` pair, then

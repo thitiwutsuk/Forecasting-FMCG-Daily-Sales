@@ -80,22 +80,21 @@ Standard data science lifecycle, 16 phases mapped to numbered notebooks in `note
 
 ## Approach Highlights
 
-- **Splitting**: strictly time-based (by week), never random — no model sees a week it will
-  later be tested on.
-- **Promotion effect**: two-way fixed-effects regression (SKU + week/season FE, price-controlled),
-  not a naive promo-vs-non-promo comparison — promotions are confounded with price and season.
-- **Cold start**: validated against real staggered SKU launches; analog-matching vs. a
-  meta-learner restricted to features available at launch time.
-- **Metrics**: WAPE/SMAPE alongside MAE/RMSE — MAPE is unstable at low SKU-week volumes.
+- **Splitting**: strictly time-based (by week), never random
+  - No model sees a week it will later be tested on
+- **Promotion effect**: two-way fixed-effects regression (SKU + week/season FE, price-controlled)
+  - Not a naive promo-vs-non-promo comparison — promotions are confounded with price and season
+- **Cold start**: validated against real staggered SKU launches
+  - Analog-matching vs. a meta-learner restricted to launch-time-available features
+- **Metrics**: WAPE/SMAPE alongside MAE/RMSE
+  - MAPE is unstable at low SKU-week volumes
 - **Base-table provenance**: built from raw data by this project's own code, not received pre-aggregated (see Data)
-  - Re-running Phases 4–11 on it reproduced every headline result from the original run — a robustness check on the findings, not just a rebuild
-- **Reproducibility**: a fixed `random_state` alone doesn't make LightGBM or scikit-learn's
-  RandomForest bit-reproducible under multithreading — both have their own floating-point
-  summation-order nondeterminism independent of the seed. LightGBM runs with
-  `deterministic=True` + `force_row_wise=True`; RandomForest runs single-threaded
-  (`n_jobs=1`) since scikit-learn has no equivalent deterministic-parallel mode and the
-  dataset is small enough that this costs little. `requirements-lock.txt` pins the exact
-  package versions used to produce the numbers in this document.
+  - Re-running Phases 4–11 on it reproduced every headline result — a robustness check, not just a rebuild
+- **Reproducibility**: a fixed `random_state` alone isn't enough for bit-reproducibility under multithreading
+  - LightGBM and scikit-learn's RandomForest both have floating-point summation-order nondeterminism independent of the seed
+  - LightGBM: `deterministic=True` + `force_row_wise=True`
+  - RandomForest: single-threaded (`n_jobs=1`) — no deterministic-parallel mode in scikit-learn, dataset small enough that this costs little
+  - `requirements-lock.txt` pins the exact package versions used for the numbers in this document
 
 ## Tech Stack
 
@@ -154,13 +153,21 @@ Forecasting FMCG Daily Sales/
 - [x] **Phase 6 — Baselines**: Moving Average (4w) is the best simple baseline, WAPE 0.243
 - [x] **Phase 7 — Core forecasting**: global pooled LightGBM wins, **WAPE 0.224**
   - Beats the baseline (0.243), local per-SKU LightGBM (0.257), and Holt-Winters ETS (0.301 vs. 0.214 for LightGBM on the same subset)
-  - Random Forest challenger scores identically at 0.224; XGBoost scores 0.225 — paired t-tests of LightGBM against each challenger (Holm-corrected for testing both) found no significant difference either way: XGBoost p = 0.297, Random Forest p = 0.606 — results are consistent with the result being robust to library choice (failure to reject isn't proof of equality; 7 folds isn't enough data to make that claim)
+  - Random Forest ties at 0.224; XGBoost scores 0.225
+    - Paired t-tests vs. LightGBM (Holm-corrected for both challengers): no significant difference (XGBoost p = 0.297, Random Forest p = 0.606)
+    - Consistent with robustness to library choice — not proof of equality; 7 folds is limited evidence
   - LightGBM carried forward as the primary model
 - [x] **Phase 8 — Promotion effect**: two-way fixed-effects regression estimates a **+28.4% uplift** [27.6%, 29.3%], p < 0.001
   - Consistent ~28–29% across all 5 categories
-  - This remains an estimate rather than proof of causal uplift or profitability. The repeating on/off treatment was audited in `notebooks/08b_promotion_robustness.ipynb`: the official R `TwoWayFEWeights` diagnostic and an independent Python decomposition both find **0 / 19,032 negative treated-cell weights**, while the heterogeneity-robust exact-match WAS estimate is **+28.9%** [28.0%, 29.8%], close to TWFE. A supplementary recurring-treatment distributed-lag model finds no evidence of pull-forward over the following 1–4 weeks (lag sum −0.0074 log points, p = 0.421; joint lags p = 0.870), but this sensitivity result does not prove absence or establish causal identification (see `LITERATURE_GROUNDING.md` §3a)
+  - Estimate only — not proof of causal uplift or profitability
+  - Repeating on/off treatment audited in `notebooks/08b_promotion_robustness.ipynb`:
+    - R `TwoWayFEWeights` + independent Python decomposition: **0 / 19,032** negative treated-cell weights
+    - Exact-match WAS estimate: **+28.9%** [28.0%, 29.8%], close to TWFE
+    - Distributed-lag check: no evidence of pull-forward over weeks 1–4 (lag sum −0.0074, p = 0.421; joint lags p = 0.870)
+    - Does not prove absence of pull-forward or establish causal identification (see `LITERATURE_GROUNDING.md` §3a)
 - [x] **Phase 9 — Seasonality & trend**: STL decomposition per category
-  - Seasonal variance share ranges from ~70% (Milk, per-SKU robustness check) to 87% (SnackBar); Milk's naive sum-of-SKUs figure of 8% was a SKU-count-growth artifact, not a real trend (see Key Findings below)
+  - Seasonal variance share: ~70% (Milk, per-SKU robustness check) to 87% (SnackBar)
+  - Milk's naive sum-of-SKUs figure (8%) was a SKU-count-growth artifact, not real trend (see Key Findings below)
 - [x] **Phase 10 — Cold-start forecasting**: compared analog-matching vs. meta-learner vs. full model on 5 held-out new SKUs
   - Both ML approaches clearly beat analog-matching at every SKU age
 - [x] **Phase 11 — Feature ablation**: measured the accuracy contribution of every engineered feature
@@ -182,13 +189,24 @@ readers. `reports/final_report.md` stays in English for a hiring-manager audienc
 
 - **Forecasting**: global pooled LightGBM reaches **WAPE 0.224** on 7-fold walk-forward CV
   - Ahead of the best baseline (0.243), local per-SKU LightGBM (0.257), and Holt-Winters ETS (0.301 on the same top-5-series subset where LightGBM scores 0.214)
-  - Global pooled Random Forest scores 0.224 too, XGBoost scores 0.225 — a robustness check on library choice, not separate models carried forward — paired t-tests against LightGBM (Holm-corrected for testing both challengers) found no significant difference either way (XGBoost p = 0.297, Random Forest p = 0.606)
-- **Promotions**: two-way fixed-effects regression estimates a **+28.4% sales uplift** [27.6%, 29.3%], p < 0.001, consistent across all 5 categories. Its negative-weight audit is reassuring: **0 / 19,032** treated cells receive negative weights (independently reproduced in Python and official R `TwoWayFEWeights`), and exact-match WAS gives **+28.9%** [28.0%, 29.8%]. A recurring-treatment distributed-lag sensitivity check finds no statistical evidence of pull-forward over weeks 1–4 (lag sum −0.0074, p = 0.421; joint lags p = 0.870; placebo leads p = 0.222). These checks address weighting and short-horizon displacement under the stated model, but do not prove causal identification, absence of pull-forward, or profitability (see `notebooks/08b_promotion_robustness.ipynb`)
-- **Seasonality**: variance share ranges from ~70% (Milk) to 87% (SnackBar) — category-dependent, not a single business-wide factor. Milk's naive sum-of-SKUs STL initially looked trend-dominated (58% trend / 8% seasonal), but that was a SKU-count-growth artifact (Milk's active SKU count grew 2→7 over the window, and summing across a growing SKU count inflates the apparent trend); a per-SKU robustness check (STL on the per-SKU mean instead of the sum) flips it to ~70% seasonal / 22% trend, in line with the other categories. The per-SKU mean has its own limitation — it's noisier when few SKUs are active early in a series — so this isn't a universal replacement for the sum-based numbers, just the more credible read for Milk specifically
-- **Cold start**: both ML approaches clearly beat naive analog-matching at every SKU age; the full model held up from the first available week
+  - Global pooled Random Forest scores 0.224 too; XGBoost scores 0.225 — a robustness check on library choice, not separate models carried forward
+    - Paired t-tests against LightGBM (Holm-corrected for both challengers): no significant difference (XGBoost p = 0.297, Random Forest p = 0.606)
+- **Promotions**: two-way fixed-effects regression estimates a **+28.4% sales uplift** [27.6%, 29.3%], p < 0.001, consistent across all 5 categories
+  - Negative-weight audit: **0 / 19,032** treated cells receive negative weights (independently reproduced in Python and official R `TwoWayFEWeights`)
+  - Exact-match WAS: **+28.9%** [28.0%, 29.8%]
+  - Recurring-treatment distributed-lag check: no statistical evidence of pull-forward over weeks 1–4 (lag sum −0.0074, p = 0.421; joint lags p = 0.870; placebo leads p = 0.222)
+  - Addresses weighting and short-horizon displacement under the stated model only — does not prove causal identification, absence of pull-forward, or profitability (see `notebooks/08b_promotion_robustness.ipynb`)
+- **Seasonality**: variance share ranges from ~70% (Milk) to 87% (SnackBar) — category-dependent, not a single business-wide factor
+  - Milk's naive sum-of-SKUs STL initially looked trend-dominated (58% trend / 8% seasonal)
+    - Artifact of Milk's active SKU count growing 2→7 over the window — summing across a growing SKU count inflates apparent trend
+  - Per-SKU robustness check (STL on per-SKU mean instead of sum) flips it to ~70% seasonal / 22% trend, in line with other categories
+    - Per-SKU mean is noisier when few SKUs are active early in a series — the more credible read for Milk specifically, not a universal replacement for the sum-based numbers
+- **Cold start**: both ML approaches clearly beat naive analog-matching at every SKU age
+  - The full model held up from the first available week
 - **Feature value**: calendar/lifecycle features matter most, ahead of lag/rolling history; price and external enrichment add close to nothing incrementally
   - This is a predictive-value finding, distinct from promotion's causal effect above
-  - Caveat: `avg_temp`/`inflation_index` are synthetic, deterministic stand-ins (see Data) largely redundant with `month`/`is_summer`/`is_winter` already in the model — this shows those *specific proxies* add nothing here, not that real external data wouldn't help actual FMCG demand planning
+  - Caveat: `avg_temp`/`inflation_index` are synthetic, deterministic stand-ins (see Data), largely redundant with `month`/`is_summer`/`is_winter` already in the model
+    - Shows those *specific proxies* add nothing here, not that real external data wouldn't help actual FMCG demand planning
 
 Every finding above was reproduced by re-running Phases 4–11 on an independently rebuilt weekly
 base table (see Data), with every headline number matching the original run within rounding.

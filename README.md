@@ -153,8 +153,8 @@ Forecasting FMCG Daily Sales/
 - [x] **Phase 6 — Baselines**: Moving Average (4w) is the best simple baseline, WAPE 0.243
 - [x] **Phase 7 — Core forecasting**: global pooled LightGBM wins, **WAPE 0.224**
   - Beats the baseline (0.243), local per-SKU LightGBM (0.257), and Holt-Winters ETS (0.301 vs. 0.214 for LightGBM on the same subset)
-  - Random Forest ties at 0.224; XGBoost scores 0.225
-    - Paired t-tests vs. LightGBM (Holm-corrected for both challengers): no significant difference (XGBoost p = 0.297, Random Forest p = 0.606)
+  - XGBoost and Random Forest tie at 0.224 too — all three within 0.0006 of each other (mean WAPE 0.2235/0.2240/0.2241)
+    - Paired t-tests vs. LightGBM (Holm-corrected for both challengers): no significant difference (p ≈ 0.801 for both)
     - Consistent with robustness to library choice — not proof of equality; 7 folds is limited evidence
   - LightGBM carried forward as the primary model
 - [x] **Phase 8 — Promotion effect**: two-way fixed-effects regression estimates a **+28.4% uplift** [27.6%, 29.3%], p < 0.001
@@ -173,6 +173,7 @@ Forecasting FMCG Daily Sales/
 - [x] **Phase 11 — Feature ablation**: measured the accuracy contribution of every engineered feature
   - Calendar/lifecycle features matter most, ahead of lag/rolling history
   - Price and external enrichment add ~0 incrementally
+  - Supplementary check in `notebooks/11b_dl_feature_experiment.ipynb`: DL entity embeddings for sku/channel/region (trained leakage-safe per fold) add no incremental accuracy either — mean WAPE 0.2235 → 0.2237, paired t-test p = 0.538
 
 ### Evaluation
 - [ ] **Phase 12 — Model evaluation rollup**: consolidate all models into one comparison table
@@ -189,8 +190,8 @@ readers. `reports/final_report.md` stays in English for a hiring-manager audienc
 
 - **Forecasting**: global pooled LightGBM reaches **WAPE 0.224** on 7-fold walk-forward CV
   - Ahead of the best baseline (0.243), local per-SKU LightGBM (0.257), and Holt-Winters ETS (0.301 on the same top-5-series subset where LightGBM scores 0.214)
-  - Global pooled Random Forest scores 0.224 too; XGBoost scores 0.225 — a robustness check on library choice, not separate models carried forward
-    - Paired t-tests against LightGBM (Holm-corrected for both challengers): no significant difference (XGBoost p = 0.297, Random Forest p = 0.606)
+  - Global pooled XGBoost and Random Forest score 0.224 too — a robustness check on library choice, not separate models carried forward
+    - Paired t-tests against LightGBM (Holm-corrected for both challengers): no significant difference (p ≈ 0.801 for both)
 - **Promotions**: two-way fixed-effects regression estimates a **+28.4% sales uplift** [27.6%, 29.3%], p < 0.001, consistent across all 5 categories
   - Negative-weight audit: **0 / 19,032** treated cells receive negative weights (independently reproduced in Python and official R `TwoWayFEWeights`)
   - Exact-match WAS: **+28.9%** [28.0%, 29.8%]

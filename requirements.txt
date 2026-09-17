@@ -13,3 +13,4 @@ pyarrow
 joblib
 jupyter
 pytest
+torch

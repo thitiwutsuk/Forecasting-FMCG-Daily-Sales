@@ -78,15 +78,15 @@ derivative) ของแถวใน leaf ซึ่งเท่ากับจ�
    ด้วย เพื่อคุมอัตรา false positive รวม (วิธีเดียวกับที่ใช้ใน Phase 11)
 
 ### ผลลัพธ์
-Global Pooled LightGBM ชนะเฉียดฉิว (WAPE 0.224) → กลายเป็น **"โมเดลหลัก"** ที่ใช้ต่อใน Phase 10 และ 11 — Global
-Pooled Random Forest ให้ WAPE เท่ากันที่ทศนิยม 3 ตำแหน่ง (0.224) ส่วน Global Pooled XGBoost อยู่ที่ 0.225
+Global Pooled LightGBM ชนะเฉียดฉิว (WAPE 0.2235) → กลายเป็น **"โมเดลหลัก"** ที่ใช้ต่อใน Phase 10 และ 11 — Global
+Pooled XGBoost (0.2240) และ Global Pooled Random Forest (0.2241) ให้ WAPE เท่ากันที่ทศนิยม 3 ตำแหน่ง (0.224 ทั้งคู่)
 
 Paired t-test ของ LightGBM เทียบกับ challenger ทั้งสองตัว (n = 7 folds, Holm-corrected):
 
 | คู่เปรียบเทียบ | mean WAPE diff | 95% CI | raw p | Holm-adjusted p | มีนัยสำคัญที่ 0.05? |
 |---|---|---|---|---|---|
-| LightGBM vs XGBoost | −0.0014 | [−0.0035, 0.0007] | 0.149 | 0.297 | ไม่ |
-| LightGBM vs Random Forest | −0.0006 | [−0.0031, 0.0020] | 0.606 | 0.606 | ไม่ |
+| LightGBM vs XGBoost | −0.0005 | [−0.0018, 0.0008] | 0.401 | 0.801 | ไม่ |
+| LightGBM vs Random Forest | −0.0006 | [−0.0033, 0.0022] | 0.631 | 0.801 | ไม่ |
 
 ไม่พบความแตกต่างที่มีนัยสำคัญทางสถิติกับ challenger ทั้งสองตัว (ใช้คำว่า "ไม่พบความแตกต่างที่มีนัยสำคัญ" อย่างตั้งใจ
 แทน "พิสูจน์แล้วว่าเท่ากัน" — การไม่ reject H0 ไม่ใช่หลักฐานว่าไม่มีความต่างเลย เพียงแต่ข้อมูล 7 folds ไม่พอจะสรุปว่าต่าง
@@ -96,9 +96,11 @@ Paired t-test ของ LightGBM เทียบกับ challenger ทั้�
 
 **หมายเหตุเรื่อง reproducibility**: ตัวเลขข้างต้นมาจากการรันแบบ deterministic (LightGBM ตั้ง `deterministic=True` +
 `force_row_wise=True`, Random Forest รันแบบ single-thread `n_jobs=1`) เพราะพบว่า fixed `random_state` อย่างเดียว
-ไม่พอทำให้ผลลัพธ์เหมือนกันทุกครั้งที่รันใหม่เมื่อมี multithreading — ตัวเลขจาก commit ก่อนหน้านี้ (ที่ยังไม่ fix เรื่องนี้)
-คลาดเคลื่อนจากตัวเลขจริงไปเล็กน้อยในทศนิยมตำแหน่งที่ 3-4 ดู `requirements-lock.txt` สำหรับ package version ที่ใช้ผลิต
-ตัวเลขชุดนี้
+ไม่พอทำให้ผลลัพธ์เหมือนกันทุกครั้งที่รันใหม่เมื่อมี multithreading — ยืนยันแล้วว่ารันซ้ำ 2 รอบใน environment เดียวกัน
+ให้ผลเหมือนกันทุกบิต ตัวเลขชุดนี้ (อัปเดตล่าสุด) รันบน environment ที่ตรงกับ `requirements-lock.txt` จริง ณ ตอนอัปเดต
+(`lightgbm==4.6.0`, `numpy==2.0.2`, `pandas==2.3.3`, Python 3.9.6, macOS) — ตัวเลขจาก commit ก่อนหน้านี้ผลิตจาก
+environment อื่น (`lightgbm==4.7.0`, `numpy==2.5.2`, `pandas==3.0.5`, Python 3.13.0, Windows) จึงคลาดเคลื่อนจาก
+ตัวเลขชุดนี้ไปเล็กน้อยในทศนิยมตำแหน่งที่ 3-4 — เป็น library-version drift ข้าม environment ไม่ใช่ความไม่เสถียรของโค้ด
 
 ---
 

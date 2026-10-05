@@ -342,7 +342,7 @@ def fit_predict_local_per_sku(train_df: pd.DataFrame, val_df: pd.DataFrame, feat
     feature_cols = feature_cols or ALL_FEATURE_COLS
     preds = pd.Series(index=val_df.index, dtype=float)
 
-    for sku, val_sub in val_df.groupby("sku"):
+    for sku, val_sub in val_df.groupby("sku", observed=False):
         train_sub = train_df[train_df.sku == sku]
         if len(train_sub) < 20:
             continue

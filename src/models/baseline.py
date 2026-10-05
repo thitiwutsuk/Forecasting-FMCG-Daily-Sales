@@ -23,13 +23,13 @@ def naive_forecast(df: pd.DataFrame) -> pd.Series:
 def seasonal_naive_forecast(df: pd.DataFrame) -> pd.Series:
     """Forecast = units_sold from 52 weeks earlier in the same group (NaN if unavailable)."""
     s = _sorted(df)
-    return s.groupby(GROUP_KEYS)["units_sold"].shift(52)
+    return s.groupby(GROUP_KEYS, observed=False)["units_sold"].shift(52)
 
 
 def moving_average_forecast(df: pd.DataFrame, window: int = 4) -> pd.Series:
     """Forecast = mean of the most recent `window` completed weeks, including the current one."""
     s = _sorted(df)
-    return s.groupby(GROUP_KEYS)["units_sold"].transform(lambda x: x.rolling(window).mean())
+    return s.groupby(GROUP_KEYS, observed=False)["units_sold"].transform(lambda x: x.rolling(window).mean())
 
 
 def add_baseline_predictions(df: pd.DataFrame) -> pd.DataFrame:

@@ -6,6 +6,7 @@
 ![scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=for-the-badge&logo=scikitlearn&logoColor=white)
 ![LightGBM](https://img.shields.io/badge/LightGBM-3499CD?style=for-the-badge&logoColor=white)
 ![XGBoost](https://img.shields.io/badge/XGBoost-006ACC?style=for-the-badge&logoColor=white)
+![CatBoost](https://img.shields.io/badge/CatBoost-FFCC00?style=for-the-badge&logoColor=black)
 ![statsmodels](https://img.shields.io/badge/statsmodels-8CAAE6?style=for-the-badge&logoColor=white)
 ![Matplotlib](https://img.shields.io/badge/Matplotlib-11557C?style=for-the-badge&logo=matplotlib&logoColor=white)
 ![Jupyter](https://img.shields.io/badge/Jupyter-F37626?style=for-the-badge&logo=jupyter&logoColor=white)
@@ -13,7 +14,7 @@
 
 <div align="right">
 
-![Progress](https://img.shields.io/badge/Progress_12%2F16-4CAF50?style=for-the-badge&logoColor=white)
+![Progress](https://img.shields.io/badge/Progress_13%2F16-4CAF50?style=for-the-badge&logoColor=white)
 
 </div>
 
@@ -95,10 +96,11 @@ Standard data science lifecycle, 16 phases mapped to numbered notebooks in `note
   - LightGBM: `deterministic=True` + `force_row_wise=True`
   - RandomForest: single-threaded (`n_jobs=1`) — no deterministic-parallel mode in scikit-learn, dataset small enough that this costs little
   - `requirements-lock.txt` pins the exact package versions used for the numbers in this document
+  - Exception: the Phase 7 numbers (incl. the CatBoost challenger) were last re-run in the current `.venv` (LightGBM 4.7.0, XGBoost 3.4.1, scikit-learn 1.9.0, CatBoost 1.2.10), which is newer than the lock file's LightGBM/XGBoost/scikit-learn pins; the lock file only had CatBoost and its dependencies added, so it has not been regenerated for that environment
 
 ## Tech Stack
 
-pandas, numpy, scikit-learn, LightGBM, XGBoost, statsmodels / linearmodels, matplotlib, seaborn,
+pandas, numpy, scikit-learn, LightGBM, XGBoost, CatBoost, statsmodels / linearmodels, matplotlib, seaborn,
 joblib, pytest (badges above). Exact pinned versions in `requirements-lock.txt`.
 
 ## Repository Structure
@@ -151,12 +153,13 @@ Forecasting FMCG Daily Sales/
 
 ### Modeling
 - [x] **Phase 6 — Baselines**: Moving Average (4w) is the best simple baseline, WAPE 0.243
-- [x] **Phase 7 — Core forecasting**: global pooled LightGBM wins, **WAPE 0.224**
+- [x] **Phase 7 — Core forecasting**: global pooled LightGBM carried forward, **WAPE 0.224**
   - Beats the baseline (0.243), local per-SKU LightGBM (0.257), and Holt-Winters ETS (0.301 vs. 0.214 for LightGBM on the same subset)
-  - XGBoost and Random Forest tie at 0.224 too — all three within 0.0006 of each other (mean WAPE 0.2235/0.2240/0.2241)
-    - Paired t-tests vs. LightGBM (Holm-corrected for both challengers): no significant difference (p ≈ 0.801 for both)
-    - Consistent with robustness to library choice — not proof of equality; 7 folds is limited evidence
-  - LightGBM carried forward as the primary model
+  - XGBoost, Random Forest and CatBoost challengers land within 0.0020 of LightGBM, and all four within 0.0034 of each other (mean WAPE: CatBoost 0.2215, LightGBM 0.2235, Random Forest 0.2241, XGBoost 0.2249)
+    - Paired t-tests vs. LightGBM (Holm-corrected across 3 challengers): no significant difference — p = 0.297 (XGBoost), 0.606 (Random Forest), 0.072 (CatBoost)
+    - CatBoost has the lowest mean WAPE (−0.0020, raw p = 0.024) but does not clear the 0.05 bar after Holm correction; a likely small edge, not a confirmed one — 7 folds is limited evidence
+    - Consistent with robustness to library choice — not proof of equality
+  - LightGBM carried forward as the primary model (Phases 10, 11, 11b are built on it); switching to CatBoost would mean re-running them
 - [x] **Phase 8 — Promotion effect**: two-way fixed-effects regression estimates a **+28.4% uplift** [27.6%, 29.3%], p < 0.001
   - Consistent ~28–29% across all 5 categories
   - Estimate only — not proof of causal uplift or profitability
@@ -176,7 +179,14 @@ Forecasting FMCG Daily Sales/
   - Supplementary check in `notebooks/11b_dl_feature_experiment.ipynb`: DL entity embeddings for sku/channel/region (trained leakage-safe per fold) add no incremental accuracy either — mean WAPE 0.2235 → 0.2237, paired t-test p = 0.538
 
 ### Evaluation
-- [ ] **Phase 12 — Model evaluation rollup**: consolidate all models into one comparison table
+- [x] **Phase 12 — Model evaluation rollup**: fresh 7-fold CV, focused on Global LightGBM vs Global XGBoost
+  - Same validation keys for the primary pair (14,850 rows each); mean WAPE **0.223517 / 0.224009**, sample fold std **0.005992 / 0.005838**
+  - Descriptive comparison only; LightGBM remains the primary model for Phase 13
+  - Supporting core models, coverage-aware comparisons, ablations and DL embeddings are included; ETS/cold-start remain separately labeled recorded references
+  - This Phase 12 run predates the CatBoost addition; CatBoost is recorded in Phase 7 and is not included in this comparison table
+  - [Notebook](notebooks/12_model_evaluation.ipynb) · [Comparison table](reports/phase12/model_comparison.csv) · [Primary comparison chart](reports/phase12/model_comparison.png) · [Run manifest](reports/phase12/run_manifest.json)
+  - Run on Python 3.12.5 / Windows; environment and source hashes are recorded without overwriting historical Phase 7 results
+  - No fit/scoring on the reserved 10 holdout origin weeks; no January 2025 batch scoring
 - [ ] **Phase 13 — Future holdout backtest**: test against real, never-seen January 2025 data
 
 ### Deployment & Communication
@@ -190,8 +200,8 @@ readers. `reports/final_report.md` stays in English for a hiring-manager audienc
 
 - **Forecasting**: global pooled LightGBM reaches **WAPE 0.224** on 7-fold walk-forward CV
   - Ahead of the best baseline (0.243), local per-SKU LightGBM (0.257), and Holt-Winters ETS (0.301 on the same top-5-series subset where LightGBM scores 0.214)
-  - Global pooled XGBoost and Random Forest score 0.224 too — a robustness check on library choice, not separate models carried forward
-    - Paired t-tests against LightGBM (Holm-corrected for both challengers): no significant difference (p ≈ 0.801 for both)
+  - Global pooled XGBoost, Random Forest and CatBoost score 0.221–0.225 — a robustness check on library choice, not separate models carried forward
+    - Paired t-tests against LightGBM (Holm-corrected across 3 challengers): no significant difference (p = 0.297 / 0.606 / 0.072 for XGBoost / Random Forest / CatBoost)
 - **Promotions**: two-way fixed-effects regression estimates a **+28.4% sales uplift** [27.6%, 29.3%], p < 0.001, consistent across all 5 categories
   - Negative-weight audit: **0 / 19,032** treated cells receive negative weights (independently reproduced in Python and official R `TwoWayFEWeights`)
   - Exact-match WAS: **+28.9%** [28.0%, 29.8%]

@@ -22,7 +22,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from models.forecast import CATEGORICAL_COLS, fit_rf_categories, make_rf_frame
+from models.forecast import CATEGORICAL_COLS, fit_predict_cb, fit_rf_categories, make_cb_frame, make_rf_frame
 
 
 def _toy_frame() -> pd.DataFrame:
@@ -132,3 +132,56 @@ def test_fit_rf_categories_ignores_unused_levels_declared_on_the_dtype():
     val_df = pd.DataFrame({"channel": pd.Series(["FutureOnly"], dtype="category")})
     X_val = make_rf_frame(val_df, ["channel"], categories=categories)
     assert X_val["channel"].iloc[0] == -1
+
+
+def _toy_cb_data(n: int = 120):
+    rng = np.random.default_rng(0)
+    df = pd.DataFrame(
+        {
+            "sku": pd.Series(rng.choice(["SKU-1", "SKU-2", "SKU-3"], n), dtype="category"),
+            "channel": pd.Series(rng.choice(["Retail", "Online"], n), dtype="category"),
+            "promo_recency": np.where(rng.random(n) < 0.2, np.nan, rng.integers(0, 10, n).astype(float)),
+            "units_sold": rng.integers(5, 50, n),
+        }
+    )
+    df["target_next_week"] = df["units_sold"] * 1.1 + rng.normal(0, 1, n)
+    return df
+
+
+CB_FAST = dict(iterations=20, depth=3)
+CB_FEATURES = ["sku", "channel", "promo_recency", "units_sold"]
+
+
+def test_make_cb_frame_categoricals_are_strings_and_numeric_nan_is_kept():
+    df = _toy_cb_data()
+    X = make_cb_frame(df, CB_FEATURES)
+    for col in CATEGORICAL_COLS:
+        if col in X.columns:
+            assert not isinstance(X[col].dtype, pd.CategoricalDtype)
+            assert X[col].map(type).eq(str).all()
+    assert X["promo_recency"].isna().any()
+
+
+def test_make_cb_frame_does_not_mutate_input():
+    df = _toy_cb_data()
+    before = df.copy(deep=True)
+    make_cb_frame(df, CB_FEATURES)
+    pd.testing.assert_frame_equal(df, before)
+
+
+def test_fit_predict_cb_returns_finite_prediction_per_val_row():
+    df = _toy_cb_data()
+    train, val = df.iloc[:90], df.iloc[90:]
+    pred = fit_predict_cb(train, val, feature_cols=CB_FEATURES, params=CB_FAST)
+    assert pred.shape == (len(val),)
+    assert np.isfinite(pred).all()
+
+
+def test_fit_predict_cb_is_deterministic_and_handles_unseen_category():
+    df = _toy_cb_data()
+    train, val = df.iloc[:90].copy(), df.iloc[90:].copy()
+    val["sku"] = val["sku"].astype(str).replace({"SKU-3": "SKU-NEW"})
+    p1 = fit_predict_cb(train, val, feature_cols=CB_FEATURES, params=CB_FAST)
+    p2 = fit_predict_cb(train, val, feature_cols=CB_FEATURES, params=CB_FAST)
+    assert np.isfinite(p1).all()
+    assert np.array_equal(p1, p2)

@@ -43,7 +43,7 @@
 
 | แกนที่ 1: pooling ข้อมูล | แกนที่ 2: วิธีการ | แกนที่ 3: library (boosting vs bagging) |
 |---|---|---|
-| Global (โมเดลเดียวรวมทุกสินค้า) vs Local (แยกต่อสินค้า) | LightGBM (Machine Learning) vs Holt-Winters ETS (สถิติคลาสสิก) | LightGBM vs XGBoost vs Random Forest (ทั้ง 3 ตัว global pooled, ฟีเจอร์/fold ชุดเดียวกัน) |
+| Global (โมเดลเดียวรวมทุกสินค้า) vs Local (แยกต่อสินค้า) | LightGBM (Machine Learning) vs Holt-Winters ETS (สถิติคลาสสิก) | LightGBM vs XGBoost vs Random Forest vs CatBoost (ทั้ง 4 ตัว global pooled, ฟีเจอร์/fold ชุดเดียวกัน) |
 
 **เหตุผลของการออกแบบแบบนี้**: ทำให้รู้ได้ว่า **"อะไรกันแน่"** ที่ทำให้ผลดีขึ้น ไม่ใช่แค่รู้ว่า "โมเดล A ดีกว่า B" เฉยๆ
 เช่น การที่ Global LightGBM ชนะ Local LightGBM (อัลกอริทึมเดียวกัน ต่างแค่วิธีจัดกลุ่มข้อมูล) พิสูจน์ได้ชัดว่า
@@ -51,17 +51,18 @@
 
 **แกนที่ 3 (library) เพิ่มเข้ามาทีหลัง** ในฐานะ **robustness/challenger check** ไม่ใช่ส่วนหนึ่งของการออกแบบ 2 แกนดั้งเดิม:
 Global pooled XGBoost (`reg:absoluteerror`, ฟีเจอร์/categorical handling/fold ชุดเดียวกับ Global pooled LightGBM
-ทุกประการ) และ Global pooled Random Forest (`sklearn.RandomForestRegressor` — bagging แทน boosting, ต้อง
+ทุกประการ), Global pooled CatBoost (`loss_function='RMSE'` เหมือน L2 ของ LightGBM, `depth=6` — จัดการ categorical ด้วย
+ordered target encoding ของตัวเอง ส่งคอลัมน์ categorical เป็น string ผ่าน `cat_features`) และ Global pooled Random Forest (`sklearn.RandomForestRegressor` — bagging แทน boosting, ต้อง
 ordinal-encode categorical columns เพราะ sklearn RF ไม่รองรับ category dtype แบบ native เหมือน LightGBM/XGBoost
 ส่วนค่า `promo_recency` ที่เป็น NaN เติมด้วย sentinel เป็นทางเลือกเชิงโมเดลเพื่อให้ต้นไม้แยกแถวเหล่านี้ออกจากค่า
 recency จริงได้ ไม่ใช่ข้อจำกัดของไลบรารี — sklearn เวอร์ชันที่ pin ไว้ (1.9) รองรับ NaN โดยตรงอยู่แล้วตั้งแต่ 1.4)
 ใช้ตรวจว่าผลของ Global pooled LightGBM ไม่ได้ดีเพราะบังเอิญ
 เจาะจงกับ implementation ตัวเดียว — เทียบราย fold พร้อม standard deviation และ paired significance test (ไม่ใช่แค่
-ค่าเฉลี่ยตัวเดียว) ดู [`07_core_forecasting.ipynb`](notebooks/07_core_forecasting.ipynb) ส่วนที่ 2-3
+ค่าเฉลี่ยตัวเดียว) ดู [`07_core_forecasting.ipynb`](notebooks/07_core_forecasting.ipynb) ส่วนที่ 2-4
 
 **หมายเหตุ**: `min_child_samples=20` (LightGBM), `min_samples_leaf=20` (Random Forest) และ `min_child_weight=20`
 (XGBoost) ตั้งเลขเดียวกันเพื่อให้ "ความพยายาม regularize" ใกล้เคียงกัน ไม่ใช่เพราะทั้งสามค่ามีความหมายเดียวกันทุก
-ประการ — `min_samples_leaf` ของ Random Forest นับจำนวนแถวตรงๆ แบบ exact ส่วน `min_child_samples` ของ LightGBM
+ประการ — CatBoost ไม่ได้ตั้งค่านี้เพราะต้นไม้แบบ symmetric ที่เป็นค่า default ไม่มีพารามิเตอร์ขนาด leaf ขั้นต่ำ (ใช้ได้เฉพาะ `grow_policy` แบบ Depthwise/Lossguide) จึงคงรูปแบบต้นไม้ default ไว้ — `min_samples_leaf` ของ Random Forest นับจำนวนแถวตรงๆ แบบ exact ส่วน `min_child_samples` ของ LightGBM
 เป็นเป้าหมายจำนวนแถวเชิงประมาณเท่านั้น (เอกสารของ LightGBM เองระบุว่าคำนวณแบบ approximation จาก Hessian ทำให้
 บาง leaf อาจมีแถวน้อยกว่าค่านี้ได้) ส่วน `min_child_weight` ของ XGBoost คือ threshold บนผลรวม Hessian (second
 derivative) ของแถวใน leaf ซึ่งเท่ากับจำนวนแถวจริงก็ต่อเมื่อทุกแถวมี Hessian = 1 (เป็นจริงสำหรับ squared-error loss
@@ -71,28 +72,35 @@ derivative) ของแถวใน leaf ซึ่งเท่ากับจ�
 1. WAPE บน walk-forward CV fold **ชุดเดียวกัน** ทุกโมเดล (7 fold)
 2. Final holdout (10 สัปดาห์สุดท้าย) แยกต่างหากจาก CV average — **ยังไม่ได้ทำ**, วางแผนไว้ที่ Phase 13 (ดู README) เพื่อรักษาความบริสุทธิ์ของชุดทดสอบสุดท้ายจนกว่าจะถึงเวลาประเมินจริง
 3. **เช็ค feature importance เพิ่ม** เพื่อยืนยันว่าโมเดลที่ชนะเรียนรู้อะไรที่สมเหตุสมผลจริง ไม่ใช่แค่ตัวเลขต่ำเพราะบังเอิญ
-4. **แกน library**: เทียบราย fold + standard deviation ระหว่าง LightGBM, XGBoost, Random Forest — ทดสอบนัยสำคัญ
-   (paired t-test ข้าม fold) ของ **LightGBM (โมเดลหลัก) เทียบกับ challenger ทั้งสองตัวแยกกัน** คือ LightGBM vs
-   XGBoost และ LightGBM vs Random Forest ไม่ใช่แค่เลือกคู่ที่ WAPE เฉลี่ยต่ำสุด 2 อันดับมาทดสอบคู่เดียว (ซึ่งเมื่อมี
-   3 โมเดล ไม่จำเป็นต้องเป็นคู่ที่ใกล้กันที่สุดจริงๆ) — เพราะทดสอบ 2 คู่พร้อมกันจึงปรับ p-value ด้วย **Holm correction**
-   ด้วย เพื่อคุมอัตรา false positive รวม (วิธีเดียวกับที่ใช้ใน Phase 11)
+4. **แกน library**: เทียบราย fold + standard deviation ระหว่าง LightGBM, XGBoost, Random Forest, CatBoost — ทดสอบนัยสำคัญ
+   (paired t-test ข้าม fold) ของ **LightGBM (โมเดลหลัก) เทียบกับ challenger ทั้งสามตัวแยกกัน** คือ LightGBM vs
+   XGBoost, LightGBM vs Random Forest และ LightGBM vs CatBoost ไม่ใช่แค่เลือกคู่ที่ WAPE เฉลี่ยต่ำสุด 2 อันดับมาทดสอบคู่เดียว
+   (ซึ่งเมื่อมีหลายโมเดล ไม่จำเป็นต้องเป็นคู่ที่ใกล้กันที่สุดจริงๆ) — เพราะทดสอบ 3 คู่พร้อมกันจึงปรับ p-value ด้วย
+   **Holm correction** ด้วย เพื่อคุมอัตรา false positive รวม (วิธีเดียวกับที่ใช้ใน Phase 11)
 
 ### ผลลัพธ์
-Global Pooled LightGBM ชนะเฉียดฉิว (WAPE 0.2235) → กลายเป็น **"โมเดลหลัก"** ที่ใช้ต่อใน Phase 10 และ 11 — Global
-Pooled XGBoost (0.2240) และ Global Pooled Random Forest (0.2241) ให้ WAPE เท่ากันที่ทศนิยม 3 ตำแหน่ง (0.224 ทั้งคู่)
+WAPE เฉลี่ยของ 4 libraries อยู่ในช่วงแคบมาก — Global Pooled CatBoost 0.2215, LightGBM 0.2235, Random Forest 0.2241,
+XGBoost 0.2249 (ห่างกันสูงสุด 0.0034) CatBoost ได้ค่าเฉลี่ยต่ำสุดทั้ง WAPE, MAE และ RMSE แต่ผลต่างยังไม่ผ่านนัยสำคัญหลัง
+ปรับ p-value (ดูด้านล่าง) จึงยังคงเลือก **Global Pooled LightGBM เป็น "โมเดลหลัก"** ที่ใช้ต่อใน Phase 10, 11 และ 11b
+เพราะ phase เหล่านั้นสร้างบนโมเดลนี้อยู่แล้ว — ไม่ใช่เพราะแม่นยำกว่า
 
-Paired t-test ของ LightGBM เทียบกับ challenger ทั้งสองตัว (n = 7 folds, Holm-corrected):
+Paired t-test ของ LightGBM เทียบกับ challenger ทั้งสามตัว (n = 7 folds, Holm-corrected 3 คู่):
 
 | คู่เปรียบเทียบ | mean WAPE diff | 95% CI | raw p | Holm-adjusted p | มีนัยสำคัญที่ 0.05? |
 |---|---|---|---|---|---|
-| LightGBM vs XGBoost | −0.0005 | [−0.0018, 0.0008] | 0.401 | 0.801 | ไม่ |
-| LightGBM vs Random Forest | −0.0006 | [−0.0033, 0.0022] | 0.631 | 0.801 | ไม่ |
+| LightGBM vs XGBoost | −0.0014 | [−0.0035, 0.0007] | 0.149 | 0.297 | ไม่ |
+| LightGBM vs Random Forest | −0.0006 | [−0.0031, 0.0020] | 0.606 | 0.606 | ไม่ |
+| LightGBM vs CatBoost | +0.0020 | [0.0004, 0.0037] | 0.024 | 0.072 | ไม่ (เฉียด) |
 
-ไม่พบความแตกต่างที่มีนัยสำคัญทางสถิติกับ challenger ทั้งสองตัว (ใช้คำว่า "ไม่พบความแตกต่างที่มีนัยสำคัญ" อย่างตั้งใจ
+ไม่พบความแตกต่างที่มีนัยสำคัญทางสถิติกับ challenger ตัวใด (ใช้คำว่า "ไม่พบความแตกต่างที่มีนัยสำคัญ" อย่างตั้งใจ
 แทน "พิสูจน์แล้วว่าเท่ากัน" — การไม่ reject H0 ไม่ใช่หลักฐานว่าไม่มีความต่างเลย เพียงแต่ข้อมูล 7 folds ไม่พอจะสรุปว่าต่าง
-อย่างมีนัยสำคัญ) ผลลัพธ์นี้จึง**สอดคล้องกับ**การที่ผลลัพธ์ robust ข้าม library (boosting หรือ bagging) — ไม่ใช่การ
-"พิสูจน์" ความเท่ากัน (การจะอ้างแบบนั้นได้ต้องกำหนด equivalence margin ไว้ล่วงหน้า ซึ่งการทดลองนี้ไม่ได้ทำ) XGBoost
-และ Random Forest ไม่ได้ทำหน้าที่เป็นเพดานอ้างอิงหรือถูก carry ต่อไปยัง phase อื่น
+อย่างมีนัยสำคัญ) กรณี CatBoost ควรอ่านอย่างระมัดระวังเป็นพิเศษ: raw p = 0.024 ต่ำกว่า 0.05 และ CatBoost ได้ WAPE ต่ำกว่า LightGBM
+ใน 5 จาก 7 folds แต่หลัง Holm correction เหลือ 0.072 จึงตีความได้เพียงว่ามี **แนวโน้ม** ดีกว่าเล็กน้อย (ประมาณ 0.9% ในเชิง
+สัมพัทธ์) ยังไม่ใช่ข้อสรุปที่ยืนยันได้ ผลลัพธ์โดยรวมจึง**สอดคล้องกับ**การที่ผลลัพธ์ robust ข้าม library — ไม่ใช่การ
+"พิสูจน์" ความเท่ากัน (การจะอ้างแบบนั้นได้ต้องกำหนด equivalence margin ไว้ล่วงหน้า ซึ่งการทดลองนี้ไม่ได้ทำ) ขณะที่ความต่างระหว่าง
+Global pooled กับ Local per-SKU LightGBM (WAPE 0.257) ใหญ่กว่าความต่างระหว่าง library ราวสิบเท่า XGBoost, Random Forest และ CatBoost
+ไม่ได้ทำหน้าที่เป็นเพดานอ้างอิงหรือถูก carry ต่อไปยัง phase อื่น — หากต้องการเปลี่ยนโมเดลหลักเป็น CatBoost ต้อง re-run
+Phase 10, 11 และ 11b ใหม่ทั้งหมด
 
 **หมายเหตุเรื่อง reproducibility**: ตัวเลขข้างต้นมาจากการรันแบบ deterministic (LightGBM ตั้ง `deterministic=True` +
 `force_row_wise=True`, Random Forest รันแบบ single-thread `n_jobs=1`) เพราะพบว่า fixed `random_state` อย่างเดียว
@@ -101,6 +109,14 @@ Paired t-test ของ LightGBM เทียบกับ challenger ทั้�
 (`lightgbm==4.6.0`, `numpy==2.0.2`, `pandas==2.3.3`, Python 3.9.6, macOS) — ตัวเลขจาก commit ก่อนหน้านี้ผลิตจาก
 environment อื่น (`lightgbm==4.7.0`, `numpy==2.5.2`, `pandas==3.0.5`, Python 3.13.0, Windows) จึงคลาดเคลื่อนจาก
 ตัวเลขชุดนี้ไปเล็กน้อยในทศนิยมตำแหน่งที่ 3-4 — เป็น library-version drift ข้าม environment ไม่ใช่ความไม่เสถียรของโค้ด
+
+**อัปเดตเมื่อเพิ่ม CatBoost**: ตัวเลขของ Phase 7 ในเอกสารนี้ (ทั้ง 4 libraries) รันใหม่ใน `.venv` ปัจจุบันบน Windows
+(Python 3.13.0, LightGBM 4.7.0, XGBoost 3.4.1, scikit-learn 1.9.0, CatBoost 1.2.10) — คือ environment ชุดเดียวกับที่ย่อหน้าก่อนระบุว่า
+คลาดเคลื่อนเล็กน้อยจาก lock file ไม่ใช่ environment ของ `requirements-lock.txt` (lock file เพิ่มเฉพาะ CatBoost และ dependency ยังไม่ได้
+regenerate) ทั้ง 4 libraries มาจากการรันครั้งเดียวกันจึงเทียบกันได้ตรงไปตรงมา แต่ต่าง environment จากตัวเลขของ Phase 10, 11 และ 11b
+ผลของการเปลี่ยน environment: mean WAPE ของ LightGBM (0.2235) และ Random Forest (0.2241) ไม่เปลี่ยน แต่ WAPE ราย fold ของ
+LightGBM ขยับเล็กน้อย และ XGBoost เปลี่ยนจาก 0.2240 เป็น 0.2249 ส่วน p-value ก่อนหน้า (p ≈ 0.801) ใช้ไม่ได้อีกเพราะจำนวนการทดสอบ
+เพิ่มจาก 2 เป็น 3 คู่ CatBoost ตั้ง `random_seed=42` และตรวจแล้วว่ารันซ้ำและเปลี่ยนจำนวน thread (1 กับ 4) ได้ผลเหมือนกันทุกบิตทั้ง 7 folds
 
 ---
 
@@ -132,7 +148,7 @@ environment อื่น (`lightgbm==4.7.0`, `numpy==2.5.2`, `pandas==3.0.5`, Py
 | Phase | หลักการเลือกตัวเปรียบเทียบ | มิติที่ใช้ตัดสิน |
 |---|---|---|
 | Baseline | ครอบคลุมสมมติฐานง่ายๆ ที่ต่างกัน 3 แบบ | ตัวเลขเฉลี่ยตัวเดียว (หาเกณฑ์ขั้นต่ำ) |
-| Core Forecasting | แยกทดสอบ pooling × วิธีการ + เช็ค library axis (LightGBM vs XGBoost vs Random Forest) เพิ่ม | WAPE (CV; holdout รอ Phase 13) + ความสม่ำเสมอ + feature importance + std dev ราย fold + paired significance test (library axis) |
+| Core Forecasting | แยกทดสอบ pooling × วิธีการ + เช็ค library axis (LightGBM vs XGBoost vs Random Forest vs CatBoost) เพิ่ม | WAPE (CV; holdout รอ Phase 13) + ความสม่ำเสมอ + feature importance + std dev ราย fold + paired significance test (library axis) |
 | Cold-Start | เทียบกลยุทธ์รับมือข้อมูลขาด 3 แบบ + มีเพดานอ้างอิง | WAPE แยกตามอายุสินค้า ไม่ใช่ค่าเฉลี่ยเดียว |
 
 ## หลักการร่วมที่ใช้ทุก Phase (ไม่เปลี่ยนแปลง)

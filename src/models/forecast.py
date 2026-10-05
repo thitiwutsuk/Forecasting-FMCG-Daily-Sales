@@ -1,5 +1,5 @@
 """Core forecasting models (Phase 7): global pooled LightGBM, local per-SKU LightGBM,
-global pooled XGBoost, global pooled Random Forest.
+global pooled XGBoost, global pooled Random Forest, global pooled CatBoost.
 
 Feature/label split is centralized here so Phase 10 (cold-start) and Phase 11
 (ablation) reuse the exact same column bookkeeping instead of redefining it.
@@ -11,6 +11,7 @@ import lightgbm as lgb
 import numpy as np
 import pandas as pd
 import xgboost as xgb
+from catboost import CatBoostRegressor
 from sklearn.ensemble import RandomForestRegressor
 
 TARGET = "target_next_week"
@@ -195,6 +196,74 @@ def fit_xgb(train_df: pd.DataFrame, feature_cols: Optional[list] = None, params:
     model = xgb.XGBRegressor(**params)
     model.fit(X_train, y_train)
     return model
+
+
+DEFAULT_CB_PARAMS = dict(
+    # loss_function="RMSE" (squared error) matches DEFAULT_LGB_PARAMS' L2 objective so
+    # this comparison varies the library, not the loss; XGBoost above already covers
+    # the L1 cross-check. depth=6 matches DEFAULT_XGB_PARAMS.
+    # CatBoost's default symmetric (oblivious) trees have no min-samples-per-leaf knob
+    # (min_data_in_leaf only applies to grow_policy Depthwise/Lossguide), so the shared
+    # "20" used by the other three models is deliberately not mirrored here -- the
+    # default tree style is kept so this stays CatBoost as normally used.
+    loss_function="RMSE",
+    iterations=300,
+    learning_rate=0.05,
+    depth=6,
+    random_seed=42,
+    thread_count=N_JOBS,
+    verbose=0,
+    allow_writing_files=False,
+)
+
+
+def make_cb_frame(df: pd.DataFrame, feature_cols: list) -> pd.DataFrame:
+    """Select feature columns for CatBoost: categoricals become plain strings (CatBoost
+    applies its own ordered target encoding to them via cat_features); numeric NaNs
+    (e.g. promo_recency's "never promoted") are left for CatBoost's native handling.
+    """
+    X = df[feature_cols].copy()
+    for col in CATEGORICAL_COLS:
+        if col in X.columns:
+            X[col] = X[col].astype(str)
+    return X
+
+
+def fit_predict_cb(
+    train_df: pd.DataFrame,
+    val_df: pd.DataFrame,
+    feature_cols: Optional[list] = None,
+    params: Optional[dict] = None,
+) -> np.ndarray:
+    """Train one CatBoost regressor on train_df, return predictions for val_df.
+
+    Same global-pooled scheme and feature set as fit_predict_lgb/fit_predict_xgb.
+    """
+    feature_cols = feature_cols or ALL_FEATURE_COLS
+    params = {**DEFAULT_CB_PARAMS, **(params or {})}
+
+    X_train = make_cb_frame(train_df, feature_cols)
+    y_train = train_df[TARGET].values
+    X_val = make_cb_frame(val_df, feature_cols)
+
+    model = CatBoostRegressor(**params, cat_features=[c for c in CATEGORICAL_COLS if c in feature_cols])
+    model.fit(X_train, y_train)
+    return model.predict(X_val)
+
+
+def fit_cb(train_df: pd.DataFrame, feature_cols: Optional[list] = None, params: Optional[dict] = None) -> CatBoostRegressor:
+    feature_cols = feature_cols or ALL_FEATURE_COLS
+    params = {**DEFAULT_CB_PARAMS, **(params or {})}
+    X_train = make_cb_frame(train_df, feature_cols)
+    y_train = train_df[TARGET].values
+    model = CatBoostRegressor(**params, cat_features=[c for c in CATEGORICAL_COLS if c in feature_cols])
+    model.fit(X_train, y_train)
+    return model
+
+
+def predict_cb(model: CatBoostRegressor, df: pd.DataFrame, feature_cols: Optional[list] = None) -> np.ndarray:
+    feature_cols = feature_cols or ALL_FEATURE_COLS
+    return model.predict(make_cb_frame(df, feature_cols))
 
 
 def fit_rf_categories(train_df: pd.DataFrame, feature_cols: list) -> dict:

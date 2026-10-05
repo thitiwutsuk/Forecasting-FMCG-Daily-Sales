@@ -1,0 +1,246 @@
+sku,channel,region,week,actual,label_week,model_id,prediction,model
+MI-006,Discount,PL-Central,2024-12-23,328.0,2024-12-30,naive,49.0,Naive
+MI-006,Discount,PL-Central,2024-12-30,405.0,2025-01-06,naive,328.0,Naive
+MI-006,Discount,PL-Central,2025-01-06,434.0,2025-01-13,naive,405.0,Naive
+MI-006,Discount,PL-Central,2025-01-13,436.0,2025-01-20,naive,434.0,Naive
+MI-006,Discount,PL-North,2024-12-23,290.0,2024-12-30,naive,73.0,Naive
+MI-006,Discount,PL-North,2024-12-30,420.0,2025-01-06,naive,290.0,Naive
+MI-006,Discount,PL-North,2025-01-06,447.0,2025-01-13,naive,420.0,Naive
+MI-006,Discount,PL-North,2025-01-13,436.0,2025-01-20,naive,447.0,Naive
+MI-006,Discount,PL-South,2024-12-23,320.0,2024-12-30,naive,87.0,Naive
+MI-006,Discount,PL-South,2024-12-30,429.0,2025-01-06,naive,320.0,Naive
+MI-006,Discount,PL-South,2025-01-06,385.0,2025-01-13,naive,429.0,Naive
+MI-006,Discount,PL-South,2025-01-13,376.0,2025-01-20,naive,385.0,Naive
+MI-006,E-commerce,PL-Central,2024-12-23,303.0,2024-12-30,naive,132.0,Naive
+MI-006,E-commerce,PL-Central,2024-12-30,432.0,2025-01-06,naive,303.0,Naive
+MI-006,E-commerce,PL-Central,2025-01-06,386.0,2025-01-13,naive,432.0,Naive
+MI-006,E-commerce,PL-Central,2025-01-13,409.0,2025-01-20,naive,386.0,Naive
+MI-006,E-commerce,PL-North,2024-12-23,339.0,2024-12-30,naive,83.0,Naive
+MI-006,E-commerce,PL-North,2024-12-30,467.0,2025-01-06,naive,339.0,Naive
+MI-006,E-commerce,PL-North,2025-01-06,406.0,2025-01-13,naive,467.0,Naive
+MI-006,E-commerce,PL-North,2025-01-13,387.0,2025-01-20,naive,406.0,Naive
+MI-006,E-commerce,PL-South,2024-12-23,344.0,2024-12-30,naive,91.0,Naive
+MI-006,E-commerce,PL-South,2024-12-30,438.0,2025-01-06,naive,344.0,Naive
+MI-006,E-commerce,PL-South,2025-01-06,374.0,2025-01-13,naive,438.0,Naive
+MI-006,E-commerce,PL-South,2025-01-13,451.0,2025-01-20,naive,374.0,Naive
+MI-006,Retail,PL-Central,2024-12-23,344.0,2024-12-30,naive,103.0,Naive
+MI-006,Retail,PL-Central,2024-12-30,378.0,2025-01-06,naive,344.0,Naive
+MI-006,Retail,PL-Central,2025-01-06,374.0,2025-01-13,naive,378.0,Naive
+MI-006,Retail,PL-Central,2025-01-13,437.0,2025-01-20,naive,374.0,Naive
+MI-006,Retail,PL-North,2024-12-30,430.0,2025-01-06,naive,314.0,Naive
+MI-006,Retail,PL-North,2025-01-06,456.0,2025-01-13,naive,430.0,Naive
+MI-006,Retail,PL-North,2025-01-13,392.0,2025-01-20,naive,456.0,Naive
+MI-006,Retail,PL-South,2024-12-23,320.0,2024-12-30,naive,46.0,Naive
+MI-006,Retail,PL-South,2024-12-30,438.0,2025-01-06,naive,320.0,Naive
+MI-006,Retail,PL-South,2025-01-06,386.0,2025-01-13,naive,438.0,Naive
+MI-006,Retail,PL-South,2025-01-13,429.0,2025-01-20,naive,386.0,Naive
+MI-006,Discount,PL-Central,2024-12-23,328.0,2024-12-30,seasonal_naive,86.0,Seasonal Naive
+MI-006,Discount,PL-Central,2024-12-30,405.0,2025-01-06,seasonal_naive,86.0,Seasonal Naive
+MI-006,Discount,PL-Central,2025-01-06,434.0,2025-01-13,seasonal_naive,88.0,Seasonal Naive
+MI-006,Discount,PL-Central,2025-01-13,436.0,2025-01-20,seasonal_naive,79.0,Seasonal Naive
+MI-006,Discount,PL-North,2024-12-23,290.0,2024-12-30,seasonal_naive,79.0,Seasonal Naive
+MI-006,Discount,PL-North,2024-12-30,420.0,2025-01-06,seasonal_naive,90.0,Seasonal Naive
+MI-006,Discount,PL-North,2025-01-06,447.0,2025-01-13,seasonal_naive,54.0,Seasonal Naive
+MI-006,Discount,PL-North,2025-01-13,436.0,2025-01-20,seasonal_naive,80.0,Seasonal Naive
+MI-006,Discount,PL-South,2024-12-23,320.0,2024-12-30,seasonal_naive,51.0,Seasonal Naive
+MI-006,Discount,PL-South,2024-12-30,429.0,2025-01-06,seasonal_naive,113.0,Seasonal Naive
+MI-006,Discount,PL-South,2025-01-06,385.0,2025-01-13,seasonal_naive,74.0,Seasonal Naive
+MI-006,Discount,PL-South,2025-01-13,376.0,2025-01-20,seasonal_naive,40.0,Seasonal Naive
+MI-006,E-commerce,PL-Central,2024-12-23,303.0,2024-12-30,seasonal_naive,68.0,Seasonal Naive
+MI-006,E-commerce,PL-Central,2024-12-30,432.0,2025-01-06,seasonal_naive,74.0,Seasonal Naive
+MI-006,E-commerce,PL-Central,2025-01-06,386.0,2025-01-13,seasonal_naive,92.0,Seasonal Naive
+MI-006,E-commerce,PL-Central,2025-01-13,409.0,2025-01-20,seasonal_naive,36.0,Seasonal Naive
+MI-006,E-commerce,PL-North,2024-12-23,339.0,2024-12-30,seasonal_naive,75.0,Seasonal Naive
+MI-006,E-commerce,PL-North,2024-12-30,467.0,2025-01-06,seasonal_naive,49.0,Seasonal Naive
+MI-006,E-commerce,PL-North,2025-01-06,406.0,2025-01-13,seasonal_naive,92.0,Seasonal Naive
+MI-006,E-commerce,PL-North,2025-01-13,387.0,2025-01-20,seasonal_naive,60.0,Seasonal Naive
+MI-006,E-commerce,PL-South,2024-12-23,344.0,2024-12-30,seasonal_naive,61.0,Seasonal Naive
+MI-006,E-commerce,PL-South,2024-12-30,438.0,2025-01-06,seasonal_naive,59.0,Seasonal Naive
+MI-006,E-commerce,PL-South,2025-01-06,374.0,2025-01-13,seasonal_naive,95.0,Seasonal Naive
+MI-006,E-commerce,PL-South,2025-01-13,451.0,2025-01-20,seasonal_naive,71.0,Seasonal Naive
+MI-006,Retail,PL-Central,2024-12-23,344.0,2024-12-30,seasonal_naive,83.0,Seasonal Naive
+MI-006,Retail,PL-Central,2024-12-30,378.0,2025-01-06,seasonal_naive,81.0,Seasonal Naive
+MI-006,Retail,PL-Central,2025-01-06,374.0,2025-01-13,seasonal_naive,113.0,Seasonal Naive
+MI-006,Retail,PL-Central,2025-01-13,437.0,2025-01-20,seasonal_naive,45.0,Seasonal Naive
+MI-006,Retail,PL-North,2024-12-30,430.0,2025-01-06,seasonal_naive,69.0,Seasonal Naive
+MI-006,Retail,PL-North,2025-01-06,456.0,2025-01-13,seasonal_naive,67.0,Seasonal Naive
+MI-006,Retail,PL-North,2025-01-13,392.0,2025-01-20,seasonal_naive,62.0,Seasonal Naive
+MI-006,Retail,PL-South,2024-12-23,320.0,2024-12-30,seasonal_naive,60.0,Seasonal Naive
+MI-006,Retail,PL-South,2024-12-30,438.0,2025-01-06,seasonal_naive,61.0,Seasonal Naive
+MI-006,Retail,PL-South,2025-01-06,386.0,2025-01-13,seasonal_naive,75.0,Seasonal Naive
+MI-006,Retail,PL-South,2025-01-13,429.0,2025-01-20,seasonal_naive,97.0,Seasonal Naive
+MI-006,Discount,PL-Central,2024-12-23,328.0,2024-12-30,moving_avg_4,61.5,Moving Average (4w)
+MI-006,Discount,PL-Central,2024-12-30,405.0,2025-01-06,moving_avg_4,128.25,Moving Average (4w)
+MI-006,Discount,PL-Central,2025-01-06,434.0,2025-01-13,moving_avg_4,215.25,Moving Average (4w)
+MI-006,Discount,PL-Central,2025-01-13,436.0,2025-01-20,moving_avg_4,304.0,Moving Average (4w)
+MI-006,Discount,PL-North,2024-12-23,290.0,2024-12-30,moving_avg_4,79.25,Moving Average (4w)
+MI-006,Discount,PL-North,2024-12-30,420.0,2025-01-06,moving_avg_4,131.5,Moving Average (4w)
+MI-006,Discount,PL-North,2025-01-06,447.0,2025-01-13,moving_avg_4,212.75,Moving Average (4w)
+MI-006,Discount,PL-North,2025-01-13,436.0,2025-01-20,moving_avg_4,307.5,Moving Average (4w)
+MI-006,Discount,PL-South,2024-12-23,320.0,2024-12-30,moving_avg_4,71.75,Moving Average (4w)
+MI-006,Discount,PL-South,2024-12-30,429.0,2025-01-06,moving_avg_4,138.25,Moving Average (4w)
+MI-006,Discount,PL-South,2025-01-06,385.0,2025-01-13,moving_avg_4,233.5,Moving Average (4w)
+MI-006,Discount,PL-South,2025-01-13,376.0,2025-01-20,moving_avg_4,305.25,Moving Average (4w)
+MI-006,E-commerce,PL-Central,2024-12-23,303.0,2024-12-30,moving_avg_4,92.75,Moving Average (4w)
+MI-006,E-commerce,PL-Central,2024-12-30,432.0,2025-01-06,moving_avg_4,147.25,Moving Average (4w)
+MI-006,E-commerce,PL-Central,2025-01-06,386.0,2025-01-13,moving_avg_4,237.5,Moving Average (4w)
+MI-006,E-commerce,PL-Central,2025-01-13,409.0,2025-01-20,moving_avg_4,313.25,Moving Average (4w)
+MI-006,E-commerce,PL-North,2024-12-23,339.0,2024-12-30,moving_avg_4,79.75,Moving Average (4w)
+MI-006,E-commerce,PL-North,2024-12-30,467.0,2025-01-06,moving_avg_4,144.25,Moving Average (4w)
+MI-006,E-commerce,PL-North,2025-01-06,406.0,2025-01-13,moving_avg_4,243.25,Moving Average (4w)
+MI-006,E-commerce,PL-North,2025-01-13,387.0,2025-01-20,moving_avg_4,323.75,Moving Average (4w)
+MI-006,E-commerce,PL-South,2024-12-23,344.0,2024-12-30,moving_avg_4,71.25,Moving Average (4w)
+MI-006,E-commerce,PL-South,2024-12-30,438.0,2025-01-06,moving_avg_4,134.5,Moving Average (4w)
+MI-006,E-commerce,PL-South,2025-01-06,374.0,2025-01-13,moving_avg_4,236.75,Moving Average (4w)
+MI-006,E-commerce,PL-South,2025-01-13,451.0,2025-01-20,moving_avg_4,311.75,Moving Average (4w)
+MI-006,Retail,PL-Central,2024-12-23,344.0,2024-12-30,moving_avg_4,88.5,Moving Average (4w)
+MI-006,Retail,PL-Central,2024-12-30,378.0,2025-01-06,moving_avg_4,159.5,Moving Average (4w)
+MI-006,Retail,PL-Central,2025-01-06,374.0,2025-01-13,moving_avg_4,234.75,Moving Average (4w)
+MI-006,Retail,PL-Central,2025-01-13,437.0,2025-01-20,moving_avg_4,299.75,Moving Average (4w)
+MI-006,Retail,PL-North,2024-12-30,430.0,2025-01-06,moving_avg_4,128.25,Moving Average (4w)
+MI-006,Retail,PL-North,2025-01-06,456.0,2025-01-13,moving_avg_4,222.75,Moving Average (4w)
+MI-006,Retail,PL-North,2025-01-13,392.0,2025-01-20,moving_avg_4,325.5,Moving Average (4w)
+MI-006,Retail,PL-South,2024-12-23,320.0,2024-12-30,moving_avg_4,69.25,Moving Average (4w)
+MI-006,Retail,PL-South,2024-12-30,438.0,2025-01-06,moving_avg_4,131.0,Moving Average (4w)
+MI-006,Retail,PL-South,2025-01-06,386.0,2025-01-13,moving_avg_4,224.25,Moving Average (4w)
+MI-006,Retail,PL-South,2025-01-13,429.0,2025-01-20,moving_avg_4,297.5,Moving Average (4w)
+MI-006,Discount,PL-Central,2024-12-23,328.0,2024-12-30,global_lgb,78.13396791297089,Global LightGBM
+MI-006,Discount,PL-Central,2024-12-30,405.0,2025-01-06,global_lgb,113.77755546265934,Global LightGBM
+MI-006,Discount,PL-Central,2025-01-06,434.0,2025-01-13,global_lgb,124.98240043562828,Global LightGBM
+MI-006,Discount,PL-Central,2025-01-13,436.0,2025-01-20,global_lgb,120.13288609983401,Global LightGBM
+MI-006,Discount,PL-North,2024-12-23,290.0,2024-12-30,global_lgb,75.67758600090173,Global LightGBM
+MI-006,Discount,PL-North,2024-12-30,420.0,2025-01-06,global_lgb,115.67121388970834,Global LightGBM
+MI-006,Discount,PL-North,2025-01-06,447.0,2025-01-13,global_lgb,113.8013726287972,Global LightGBM
+MI-006,Discount,PL-North,2025-01-13,436.0,2025-01-20,global_lgb,120.45266610280287,Global LightGBM
+MI-006,Discount,PL-South,2024-12-23,320.0,2024-12-30,global_lgb,78.98799956955365,Global LightGBM
+MI-006,Discount,PL-South,2024-12-30,429.0,2025-01-06,global_lgb,108.84921939698025,Global LightGBM
+MI-006,Discount,PL-South,2025-01-06,385.0,2025-01-13,global_lgb,120.86395122720697,Global LightGBM
+MI-006,Discount,PL-South,2025-01-13,376.0,2025-01-20,global_lgb,112.52776263554796,Global LightGBM
+MI-006,E-commerce,PL-Central,2024-12-23,303.0,2024-12-30,global_lgb,82.70261867431651,Global LightGBM
+MI-006,E-commerce,PL-Central,2024-12-30,432.0,2025-01-06,global_lgb,103.94667379406562,Global LightGBM
+MI-006,E-commerce,PL-Central,2025-01-06,386.0,2025-01-13,global_lgb,119.2531351969616,Global LightGBM
+MI-006,E-commerce,PL-Central,2025-01-13,409.0,2025-01-20,global_lgb,123.11126842740212,Global LightGBM
+MI-006,E-commerce,PL-North,2024-12-23,339.0,2024-12-30,global_lgb,75.81923519383307,Global LightGBM
+MI-006,E-commerce,PL-North,2024-12-30,467.0,2025-01-06,global_lgb,111.12558333738546,Global LightGBM
+MI-006,E-commerce,PL-North,2025-01-06,406.0,2025-01-13,global_lgb,113.35454702575224,Global LightGBM
+MI-006,E-commerce,PL-North,2025-01-13,387.0,2025-01-20,global_lgb,115.45486089928221,Global LightGBM
+MI-006,E-commerce,PL-South,2024-12-23,344.0,2024-12-30,global_lgb,77.40408886809142,Global LightGBM
+MI-006,E-commerce,PL-South,2024-12-30,438.0,2025-01-06,global_lgb,109.52135885123616,Global LightGBM
+MI-006,E-commerce,PL-South,2025-01-06,374.0,2025-01-13,global_lgb,113.80690722253392,Global LightGBM
+MI-006,E-commerce,PL-South,2025-01-13,451.0,2025-01-20,global_lgb,114.8350303927887,Global LightGBM
+MI-006,Retail,PL-Central,2024-12-23,344.0,2024-12-30,global_lgb,82.8775327122209,Global LightGBM
+MI-006,Retail,PL-Central,2024-12-30,378.0,2025-01-06,global_lgb,106.52932432679657,Global LightGBM
+MI-006,Retail,PL-Central,2025-01-06,374.0,2025-01-13,global_lgb,122.64650035801039,Global LightGBM
+MI-006,Retail,PL-Central,2025-01-13,437.0,2025-01-20,global_lgb,109.25608537921642,Global LightGBM
+MI-006,Retail,PL-North,2024-12-30,430.0,2025-01-06,global_lgb,111.79341256764108,Global LightGBM
+MI-006,Retail,PL-North,2025-01-06,456.0,2025-01-13,global_lgb,121.78609889400619,Global LightGBM
+MI-006,Retail,PL-North,2025-01-13,392.0,2025-01-20,global_lgb,128.0135945658359,Global LightGBM
+MI-006,Retail,PL-South,2024-12-23,320.0,2024-12-30,global_lgb,73.88616418805992,Global LightGBM
+MI-006,Retail,PL-South,2024-12-30,438.0,2025-01-06,global_lgb,102.35525450044788,Global LightGBM
+MI-006,Retail,PL-South,2025-01-06,386.0,2025-01-13,global_lgb,115.99911685137873,Global LightGBM
+MI-006,Retail,PL-South,2025-01-13,429.0,2025-01-20,global_lgb,114.12455693189241,Global LightGBM
+MI-006,Discount,PL-Central,2024-12-23,328.0,2024-12-30,global_xgb,82.03486633300781,Global XGBoost
+MI-006,Discount,PL-Central,2024-12-30,405.0,2025-01-06,global_xgb,92.83132934570312,Global XGBoost
+MI-006,Discount,PL-Central,2025-01-06,434.0,2025-01-13,global_xgb,130.46839904785156,Global XGBoost
+MI-006,Discount,PL-Central,2025-01-13,436.0,2025-01-20,global_xgb,139.51097106933594,Global XGBoost
+MI-006,Discount,PL-North,2024-12-23,290.0,2024-12-30,global_xgb,76.6678466796875,Global XGBoost
+MI-006,Discount,PL-North,2024-12-30,420.0,2025-01-06,global_xgb,98.40579223632812,Global XGBoost
+MI-006,Discount,PL-North,2025-01-06,447.0,2025-01-13,global_xgb,132.29995727539062,Global XGBoost
+MI-006,Discount,PL-North,2025-01-13,436.0,2025-01-20,global_xgb,138.20530700683594,Global XGBoost
+MI-006,Discount,PL-South,2024-12-23,320.0,2024-12-30,global_xgb,88.47318267822266,Global XGBoost
+MI-006,Discount,PL-South,2024-12-30,429.0,2025-01-06,global_xgb,95.77000427246094,Global XGBoost
+MI-006,Discount,PL-South,2025-01-06,385.0,2025-01-13,global_xgb,127.37913513183594,Global XGBoost
+MI-006,Discount,PL-South,2025-01-13,376.0,2025-01-20,global_xgb,142.08828735351562,Global XGBoost
+MI-006,E-commerce,PL-Central,2024-12-23,303.0,2024-12-30,global_xgb,84.7930908203125,Global XGBoost
+MI-006,E-commerce,PL-Central,2024-12-30,432.0,2025-01-06,global_xgb,106.53250122070312,Global XGBoost
+MI-006,E-commerce,PL-Central,2025-01-06,386.0,2025-01-13,global_xgb,133.47645568847656,Global XGBoost
+MI-006,E-commerce,PL-Central,2025-01-13,409.0,2025-01-20,global_xgb,139.17955017089844,Global XGBoost
+MI-006,E-commerce,PL-North,2024-12-23,339.0,2024-12-30,global_xgb,77.30150604248047,Global XGBoost
+MI-006,E-commerce,PL-North,2024-12-30,467.0,2025-01-06,global_xgb,96.28626251220703,Global XGBoost
+MI-006,E-commerce,PL-North,2025-01-06,406.0,2025-01-13,global_xgb,129.5343475341797,Global XGBoost
+MI-006,E-commerce,PL-North,2025-01-13,387.0,2025-01-20,global_xgb,137.1757049560547,Global XGBoost
+MI-006,E-commerce,PL-South,2024-12-23,344.0,2024-12-30,global_xgb,83.12619018554688,Global XGBoost
+MI-006,E-commerce,PL-South,2024-12-30,438.0,2025-01-06,global_xgb,92.53153228759766,Global XGBoost
+MI-006,E-commerce,PL-South,2025-01-06,374.0,2025-01-13,global_xgb,126.63931274414062,Global XGBoost
+MI-006,E-commerce,PL-South,2025-01-13,451.0,2025-01-20,global_xgb,137.9421844482422,Global XGBoost
+MI-006,Retail,PL-Central,2024-12-23,344.0,2024-12-30,global_xgb,83.29828643798828,Global XGBoost
+MI-006,Retail,PL-Central,2024-12-30,378.0,2025-01-06,global_xgb,104.24287414550781,Global XGBoost
+MI-006,Retail,PL-Central,2025-01-06,374.0,2025-01-13,global_xgb,136.38417053222656,Global XGBoost
+MI-006,Retail,PL-Central,2025-01-13,437.0,2025-01-20,global_xgb,142.1691131591797,Global XGBoost
+MI-006,Retail,PL-North,2024-12-30,430.0,2025-01-06,global_xgb,103.02825927734375,Global XGBoost
+MI-006,Retail,PL-North,2025-01-06,456.0,2025-01-13,global_xgb,126.53480529785156,Global XGBoost
+MI-006,Retail,PL-North,2025-01-13,392.0,2025-01-20,global_xgb,140.2291717529297,Global XGBoost
+MI-006,Retail,PL-South,2024-12-23,320.0,2024-12-30,global_xgb,75.60121154785156,Global XGBoost
+MI-006,Retail,PL-South,2024-12-30,438.0,2025-01-06,global_xgb,95.2516860961914,Global XGBoost
+MI-006,Retail,PL-South,2025-01-06,386.0,2025-01-13,global_xgb,125.10729217529297,Global XGBoost
+MI-006,Retail,PL-South,2025-01-13,429.0,2025-01-20,global_xgb,135.34361267089844,Global XGBoost
+MI-006,Discount,PL-Central,2024-12-23,328.0,2024-12-30,global_cb,76.51696588662453,Global CatBoost
+MI-006,Discount,PL-Central,2024-12-30,405.0,2025-01-06,global_cb,100.16715556696627,Global CatBoost
+MI-006,Discount,PL-Central,2025-01-06,434.0,2025-01-13,global_cb,126.5617474154457,Global CatBoost
+MI-006,Discount,PL-Central,2025-01-13,436.0,2025-01-20,global_cb,114.8039847550728,Global CatBoost
+MI-006,Discount,PL-North,2024-12-23,290.0,2024-12-30,global_cb,73.21513704387104,Global CatBoost
+MI-006,Discount,PL-North,2024-12-30,420.0,2025-01-06,global_cb,100.20116716058354,Global CatBoost
+MI-006,Discount,PL-North,2025-01-06,447.0,2025-01-13,global_cb,127.53981488762336,Global CatBoost
+MI-006,Discount,PL-North,2025-01-13,436.0,2025-01-20,global_cb,121.25635125613351,Global CatBoost
+MI-006,Discount,PL-South,2024-12-23,320.0,2024-12-30,global_cb,77.60867219555075,Global CatBoost
+MI-006,Discount,PL-South,2024-12-30,429.0,2025-01-06,global_cb,98.96904261011862,Global CatBoost
+MI-006,Discount,PL-South,2025-01-06,385.0,2025-01-13,global_cb,121.92356247454411,Global CatBoost
+MI-006,Discount,PL-South,2025-01-13,376.0,2025-01-20,global_cb,117.15332879954936,Global CatBoost
+MI-006,E-commerce,PL-Central,2024-12-23,303.0,2024-12-30,global_cb,79.88401736958308,Global CatBoost
+MI-006,E-commerce,PL-Central,2024-12-30,432.0,2025-01-06,global_cb,105.13802738225297,Global CatBoost
+MI-006,E-commerce,PL-Central,2025-01-06,386.0,2025-01-13,global_cb,125.093158950724,Global CatBoost
+MI-006,E-commerce,PL-Central,2025-01-13,409.0,2025-01-20,global_cb,131.16088264869413,Global CatBoost
+MI-006,E-commerce,PL-North,2024-12-23,339.0,2024-12-30,global_cb,72.60629161614895,Global CatBoost
+MI-006,E-commerce,PL-North,2024-12-30,467.0,2025-01-06,global_cb,98.96902521516421,Global CatBoost
+MI-006,E-commerce,PL-North,2025-01-06,406.0,2025-01-13,global_cb,130.51043447335695,Global CatBoost
+MI-006,E-commerce,PL-North,2025-01-13,387.0,2025-01-20,global_cb,114.0421674004536,Global CatBoost
+MI-006,E-commerce,PL-South,2024-12-23,344.0,2024-12-30,global_cb,74.76024563829321,Global CatBoost
+MI-006,E-commerce,PL-South,2024-12-30,438.0,2025-01-06,global_cb,99.43732467252673,Global CatBoost
+MI-006,E-commerce,PL-South,2025-01-06,374.0,2025-01-13,global_cb,121.86363728759117,Global CatBoost
+MI-006,E-commerce,PL-South,2025-01-13,451.0,2025-01-20,global_cb,114.87050977582118,Global CatBoost
+MI-006,Retail,PL-Central,2024-12-23,344.0,2024-12-30,global_cb,81.57695892381199,Global CatBoost
+MI-006,Retail,PL-Central,2024-12-30,378.0,2025-01-06,global_cb,103.21306230628043,Global CatBoost
+MI-006,Retail,PL-Central,2025-01-06,374.0,2025-01-13,global_cb,129.23727076163627,Global CatBoost
+MI-006,Retail,PL-Central,2025-01-13,437.0,2025-01-20,global_cb,115.54084063148802,Global CatBoost
+MI-006,Retail,PL-North,2024-12-30,430.0,2025-01-06,global_cb,104.95400693980824,Global CatBoost
+MI-006,Retail,PL-North,2025-01-06,456.0,2025-01-13,global_cb,123.13952099039768,Global CatBoost
+MI-006,Retail,PL-North,2025-01-13,392.0,2025-01-20,global_cb,129.09372004092393,Global CatBoost
+MI-006,Retail,PL-South,2024-12-23,320.0,2024-12-30,global_cb,77.48564463927053,Global CatBoost
+MI-006,Retail,PL-South,2024-12-30,438.0,2025-01-06,global_cb,99.07528014991115,Global CatBoost
+MI-006,Retail,PL-South,2025-01-06,386.0,2025-01-13,global_cb,125.29903937005228,Global CatBoost
+MI-006,Retail,PL-South,2025-01-13,429.0,2025-01-20,global_cb,115.43643022992308,Global CatBoost
+MI-006,Discount,PL-Central,2024-12-23,328.0,2024-12-30,global_rf,74.47631914700871,Global Random Forest
+MI-006,Discount,PL-Central,2024-12-30,405.0,2025-01-06,global_rf,96.98141098205083,Global Random Forest
+MI-006,Discount,PL-Central,2025-01-06,434.0,2025-01-13,global_rf,128.3758997151198,Global Random Forest
+MI-006,Discount,PL-Central,2025-01-13,436.0,2025-01-20,global_rf,137.11191205433354,Global Random Forest
+MI-006,Discount,PL-North,2024-12-23,290.0,2024-12-30,global_rf,72.93435957585947,Global Random Forest
+MI-006,Discount,PL-North,2024-12-30,420.0,2025-01-06,global_rf,111.17868495543364,Global Random Forest
+MI-006,Discount,PL-North,2025-01-06,447.0,2025-01-13,global_rf,129.99725214331204,Global Random Forest
+MI-006,Discount,PL-North,2025-01-13,436.0,2025-01-20,global_rf,138.56859735322922,Global Random Forest
+MI-006,Discount,PL-South,2024-12-23,320.0,2024-12-30,global_rf,73.04320144312578,Global Random Forest
+MI-006,Discount,PL-South,2024-12-30,429.0,2025-01-06,global_rf,104.4729918935317,Global Random Forest
+MI-006,Discount,PL-South,2025-01-06,385.0,2025-01-13,global_rf,128.20271910485206,Global Random Forest
+MI-006,Discount,PL-South,2025-01-13,376.0,2025-01-20,global_rf,139.97147118381162,Global Random Forest
+MI-006,E-commerce,PL-Central,2024-12-23,303.0,2024-12-30,global_rf,85.1434529066049,Global Random Forest
+MI-006,E-commerce,PL-Central,2024-12-30,432.0,2025-01-06,global_rf,111.27433667151061,Global Random Forest
+MI-006,E-commerce,PL-Central,2025-01-06,386.0,2025-01-13,global_rf,129.36734556306357,Global Random Forest
+MI-006,E-commerce,PL-Central,2025-01-13,409.0,2025-01-20,global_rf,137.68517841783512,Global Random Forest
+MI-006,E-commerce,PL-North,2024-12-23,339.0,2024-12-30,global_rf,70.93886721772456,Global Random Forest
+MI-006,E-commerce,PL-North,2024-12-30,467.0,2025-01-06,global_rf,96.72688568718094,Global Random Forest
+MI-006,E-commerce,PL-North,2025-01-06,406.0,2025-01-13,global_rf,129.33002375986877,Global Random Forest
+MI-006,E-commerce,PL-North,2025-01-13,387.0,2025-01-20,global_rf,137.70997484926713,Global Random Forest
+MI-006,E-commerce,PL-South,2024-12-23,344.0,2024-12-30,global_rf,70.11725586063761,Global Random Forest
+MI-006,E-commerce,PL-South,2024-12-30,438.0,2025-01-06,global_rf,99.22254491120857,Global Random Forest
+MI-006,E-commerce,PL-South,2025-01-06,374.0,2025-01-13,global_rf,129.1955414093036,Global Random Forest
+MI-006,E-commerce,PL-South,2025-01-13,451.0,2025-01-20,global_rf,139.68350394336406,Global Random Forest
+MI-006,Retail,PL-Central,2024-12-23,344.0,2024-12-30,global_rf,82.59543716116401,Global Random Forest
+MI-006,Retail,PL-Central,2024-12-30,378.0,2025-01-06,global_rf,100.19205885021213,Global Random Forest
+MI-006,Retail,PL-Central,2025-01-06,374.0,2025-01-13,global_rf,134.42362880330188,Global Random Forest
+MI-006,Retail,PL-Central,2025-01-13,437.0,2025-01-20,global_rf,140.8980985876742,Global Random Forest
+MI-006,Retail,PL-North,2024-12-30,430.0,2025-01-06,global_rf,101.16785935281376,Global Random Forest
+MI-006,Retail,PL-North,2025-01-06,456.0,2025-01-13,global_rf,132.17900147595324,Global Random Forest
+MI-006,Retail,PL-North,2025-01-13,392.0,2025-01-20,global_rf,139.29788569751216,Global Random Forest
+MI-006,Retail,PL-South,2024-12-23,320.0,2024-12-30,global_rf,75.48723887755138,Global Random Forest
+MI-006,Retail,PL-South,2024-12-30,438.0,2025-01-06,global_rf,102.68682611967603,Global Random Forest
+MI-006,Retail,PL-South,2025-01-06,386.0,2025-01-13,global_rf,131.08955161123097,Global Random Forest
+MI-006,Retail,PL-South,2025-01-13,429.0,2025-01-20,global_rf,140.1288052317008,Global Random Forest

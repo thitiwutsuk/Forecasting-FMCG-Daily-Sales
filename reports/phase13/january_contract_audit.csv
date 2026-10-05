@@ -1,0 +1,15 @@
+check,history,batch,consistent,why_it_matters
+columns and dtypes,14 columns,identical,True,Pipeline code must read the batch unchanged.
+SKUs in batch,MI-006,MI-006,True,Cross-SKU features can't be recomputed from a single-SKU batch.
+date range,2022-01-21 → 2024-12-31,2025-01-01 → 2025-01-26,True,Batches must continue the history without overlap or gaps.
+duplicate series-day rows,0,468,False,Weekly units_sold is a SUM of daily rows; extra rows per day inflate it.
+rows per series-day,1–1,3–3,False,Same as above.
+share of calendar days with a row,0.85,1.00,False,Weekly sums depend on how many days are recorded.
+units_sold per row: mean [min–max],16.13 [0–94],19.90 [10–29] (KS D=0.29),False,Per-row distribution the model learned from.
+price_unit per row: mean [min–max],5.24 [1.5–9],5.50 [3.76–6.98] (KS D=0.38),False,Per-row distribution the model learned from.
+stock_available per row: mean [min–max],158.05 [0–352],127.84 [50–199] (KS D=0.24),False,Per-row distribution the model learned from.
+delivered_qty per row: mean [min–max],179.48 [2–330],89.76 [60–119] (KS D=0.93),False,Per-row distribution the model learned from.
+delivery_days per row: mean [min–max],3.00 [1–5],2.51 [1–4] (KS D=0.21),False,Per-row distribution the model learned from.
+promotion rate per row,0.14,0.41,False,Promo frequency drives promo features.
+"units per row, promo / no-promo",1.93×,0.97×,False,The learned promo response (Phase 8: ≈+28%).
+weekly units per series (full weeks),"median 90, p99 205","median 429, range 374–467",False,The quantity the model forecasts.

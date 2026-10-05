@@ -14,7 +14,7 @@
 
 <div align="right">
 
-![Progress](https://img.shields.io/badge/Progress_13%2F16-4CAF50?style=for-the-badge&logoColor=white)
+![Progress](https://img.shields.io/badge/Progress_14%2F16-4CAF50?style=for-the-badge&logoColor=white)
 
 </div>
 
@@ -43,7 +43,7 @@ features, and every calendar/lifecycle feature from `FMCG_2022_2024.csv` alone.
 | File | Grain | Rows | Description |
 |---|---|---|---|
 | `data/raw/FMCG_2022_2024.csv` | daily | 190,758 | Raw transactions, Jan 2022–Dec 2024 — the only true raw input |
-| `data/raw/batch_MI-006_2025-01-*.parquet` | daily, MI-006 only | 4 files | Jan 2025 data, post-training-window — true future holdout |
+| `data/raw/batch_MI-006_2025-01-*.parquet` | daily, MI-006 only | 4 files | Jan 2025 data, post-training-window — true future holdout (fails the 2022–2024 data contract, see Phase 13) |
 | `data/interim/daily_validated.csv` | daily | 190,758 | Phase 3 output: 3 negative-value rows clipped to 0 |
 | `data/processed/weekly_features.csv` | weekly | 31,027 | Self-built base + enrichment (30 SKUs) + hypothesis-driven features |
 | `data/raw/given_reference/*.csv` | weekly | — | Originally-given tables, kept for reference only; not read by the pipeline |
@@ -187,7 +187,25 @@ Forecasting FMCG Daily Sales/
   - [Notebook](notebooks/12_model_evaluation.ipynb) · [Comparison table](reports/phase12/model_comparison.csv) · [Primary comparison chart](reports/phase12/model_comparison.png) · [Run manifest](reports/phase12/run_manifest.json)
   - Run on Python 3.12.5 / Windows; environment and source hashes are recorded without overwriting historical Phase 7 results
   - No fit/scoring on the reserved 10 holdout origin weeks; no January 2025 batch scoring
-- [ ] **Phase 13 — Future holdout backtest**: test against real, never-seen January 2025 data
+- [x] **Phase 13 — Future holdout backtest**: final holdout + January 2025 batches, each model fitted once, nothing tuned on the test data
+  - **Label audit first**: origin 2024-12-23's label week (Dec 30–Jan 5) has only 2/7 days because the raw file ends 2024-12-31
+    - Excluded from the primary score; scoring it anyway would inflate LightGBM's WAPE from 0.224 to 0.299
+  - **Part A — final holdout** (9 complete origin weeks, 30 SKUs, 2,430 forecasts): Global LightGBM **WAPE 0.2238** vs 0.2235 in Phase 12 CV, so no generalization gap
+    - Beats Moving Average (4w) (0.2423) in 9/9 weeks; series-level bootstrap 95% CI for the gap [1.47, 2.21] pp
+    - CatBoost 0.2231, XGBoost 0.2241, Random Forest 0.2265: CIs vs LightGBM include or touch 0, matching Phase 7's library-robustness result
+    - LightGBM over-forecasts by 3.7% in aggregate (XGBoost, trained on L1, by 1.4%)
+  - **Part B — January 2025** (MI-006, 35 one-step-ahead forecasts, model frozen through January): a data-contract audit fails 11/14 checks before any scoring
+    - Batches carry 3 rows per series-day (history ≤1), `units_sold` is only 10–29 per row, and promotions no longer lift sales (0.97× vs 1.93×)
+    - Weekly units per series jump ~5.5× (×3.6 rows per week × ×1.5 units per row)
+    - Every ML model scores WAPE 0.71–0.73 with ~−72% bias; trees can't extrapolate past the training maximum (largest MI-006 series-week label 248 vs smallest January label 374)
+    - Naive scores 0.255 only because it copies the already-shifted level; this measures a data break, not demand-forecast skill
+    - Leakage checks: the rebuilt MI-006 history matches `weekly_features.csv` exactly, and a batch-by-batch arrival replay changes no feature
+    - `category_trend` / `price_index` need other Milk SKUs, so their last complete-week values are carried forward
+  - Recommendation: gate new batches on the contract audit; don't retrain on these batches until the data owner confirms whether the new grain is intended
+  - Run on Python 3.9.6 / macOS with the exact `requirements-lock.txt` pins (LightGBM 4.6.0, XGBoost 2.1.4, scikit-learn 1.6.1, CatBoost 1.2.10); environment and input hashes in `reports/phase13/run_manifest.json`
+    - Cross-check in the same environment: re-running Phase 12's CV reproduces XGBoost bit-for-bit and LightGBM's mean WAPE to 0.223513 vs 0.223517 (per-fold drift ≤ 0.0007, cross-OS; LightGBM output is identical at 1 vs 4 threads)
+    - On macOS, LightGBM/XGBoost wheels need an OpenMP runtime (`brew install libomp`)
+  - [Notebook](notebooks/13_future_holdout_backtest.ipynb) · [Results](reports/phase13/) · code in `src/models/holdout.py`, tests in `tests/test_holdout.py`
 
 ### Deployment & Communication
 - [ ] **Phase 14 — Communication deliverable**: `reports/final_report.md` with business-framed findings
@@ -202,6 +220,8 @@ readers. `reports/final_report.md` stays in English for a hiring-manager audienc
   - Ahead of the best baseline (0.243), local per-SKU LightGBM (0.257), and Holt-Winters ETS (0.301 on the same top-5-series subset where LightGBM scores 0.214)
   - Global pooled XGBoost, Random Forest and CatBoost score 0.221–0.225 — a robustness check on library choice, not separate models carried forward
     - Paired t-tests against LightGBM (Holm-corrected across 3 challengers): no significant difference (p = 0.297 / 0.606 / 0.072 for XGBoost / Random Forest / CatBoost)
+- **Final holdout**: LightGBM WAPE **0.224** on the 10 reserved weeks (9 with complete labels), the same as CV (0.2235); nothing tuned on it
+  - The January 2025 batches fail the historical data contract (3× row density, different value ranges, no promo effect), so their ~0.73 WAPE reflects a data break, not model skill
 - **Promotions**: two-way fixed-effects regression estimates a **+28.4% sales uplift** [27.6%, 29.3%], p < 0.001, consistent across all 5 categories
   - Negative-weight audit: **0 / 19,032** treated cells receive negative weights (independently reproduced in Python and official R `TwoWayFEWeights`)
   - Exact-match WAS: **+28.9%** [28.0%, 29.8%]

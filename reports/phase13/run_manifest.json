@@ -1,0 +1,170 @@
+{
+  "created_at_utc": "2026-10-05T15:09:11.080894+00:00",
+  "source_commit": "93822961079b9432aee089ce1eeef255c52266d9",
+  "git_status_at_run": "?? notebooks/13_future_holdout_backtest.ipynb\n?? reports/figures/phase13_final_holdout.png\n?? reports/figures/phase13_january_backtest.png\n?? reports/phase13/\n?? src/models/holdout.py\n?? tests/test_holdout.py",
+  "python": "3.9.6",
+  "os": "macOS-26.6.2-arm64-arm-64bit",
+  "packages": {
+    "numpy": "2.0.2",
+    "pandas": "2.3.3",
+    "scikit-learn": "1.6.1",
+    "scipy": "1.13.1",
+    "lightgbm": "4.6.0",
+    "xgboost": "2.1.4",
+    "catboost": "1.2.10",
+    "pyarrow": "21.0.0",
+    "matplotlib": "3.9.4"
+  },
+  "input_hashes": {
+    "data/interim/daily_validated.csv": "437b392b46291a7dc73de7c6d16bd643113b37d627ddaf111d5c0908e2242c61",
+    "data/processed/weekly_features.csv": "ba199fda51119d124ae983144eecea9d2d80e9b04835aba376280de6f5abd20b",
+    "src/models/holdout.py": "3720a13c2d0723fb631a6dafb13cc8b3ea0833ff82b0139712289aaf59df75dc",
+    "src/models/forecast.py": "019c17442f48541f770f6ccd67799db7dc640a353ebbd1cf933e2f3a28b24a05",
+    "src/models/baseline.py": "5007f49308e7944e611084df5bc3ec74a7ebbd0833d35fe6a1143b90b7c2ea4e",
+    "src/models/metrics.py": "3e9c2d7d96e4828a3876496f793d3fc175cec8805a7fcf342e447099b2170484",
+    "src/data/build_weekly_base.py": "c9cdde70c1f3dc6603ad3a6ae3b831026ee1f02d1c83946b72fed66bbc847095",
+    "src/features/enrich.py": "f915406ea15427983dd4c1b25a0d9de8ca5ea60369ebeae410431dba50f3c678",
+    "src/features/engineer.py": "592ac18d572c3b0e5a0f4ada111ddd882a1fbdef0660ec10056c57c9ebf0cee4",
+    "src/splits/walk_forward.py": "6a6894ac0cc4d125d0c1ed4d9c975bfb3e988f6c8b9a32e2b73ba9a3fbeb9159",
+    "requirements-lock.txt": "914bddb49d52b2c22ad1bb37a7fd420307656bd2f74234f88c2e1d742e94234d",
+    "data/raw/batch_MI-006_2025-01-06.parquet": "5f4f6f0fc9ca515d58e51a846e3d4e62f442640778aace98a7183154cdb850d8",
+    "data/raw/batch_MI-006_2025-01-13.parquet": "0717466de9546fbfd4d1f4374fb22758f94f0906e0b6acc45795d31b77466528",
+    "data/raw/batch_MI-006_2025-01-20.parquet": "3a93fc5ecdcce282bfc987536fcad6fd6c142c139374689ba3c318fb4d61dcab",
+    "data/raw/batch_MI-006_2025-01-27.parquet": "9bd5fad1a72630908ef91b5b13603498df4f33e9b35e8daf14ca04345ed69d73"
+  },
+  "split_config": {
+    "initial_train_end": "2023-09-30",
+    "val_fold_weeks": 8,
+    "final_test_weeks": 10
+  },
+  "primary_model": "global_lgb",
+  "models": {
+    "naive": "Naive",
+    "seasonal_naive": "Seasonal Naive",
+    "moving_avg_4": "Moving Average (4w)",
+    "global_lgb": "Global LightGBM",
+    "global_xgb": "Global XGBoost",
+    "global_cb": "Global CatBoost",
+    "global_rf": "Global Random Forest"
+  },
+  "model_parameters": {
+    "lightgbm": {
+      "objective": "regression",
+      "n_estimators": 300,
+      "learning_rate": 0.05,
+      "num_leaves": 31,
+      "min_child_samples": 20,
+      "verbosity": -1,
+      "random_state": 42,
+      "n_jobs": 4,
+      "deterministic": true,
+      "force_row_wise": true
+    },
+    "xgboost": {
+      "objective": "reg:absoluteerror",
+      "n_estimators": 300,
+      "learning_rate": 0.05,
+      "max_depth": 6,
+      "min_child_weight": 20,
+      "tree_method": "hist",
+      "enable_categorical": true,
+      "random_state": 42,
+      "n_jobs": 4
+    },
+    "catboost": {
+      "loss_function": "RMSE",
+      "iterations": 300,
+      "learning_rate": 0.05,
+      "depth": 6,
+      "random_seed": 42,
+      "thread_count": 4,
+      "verbose": 0,
+      "allow_writing_files": false
+    },
+    "random_forest": {
+      "n_estimators": 300,
+      "max_depth": null,
+      "min_samples_leaf": 20,
+      "n_jobs": 1,
+      "random_state": 42
+    }
+  },
+  "metric_aggregation": "Pooled over all scored rows (not a mean of per-week scores); bias = sum(pred-actual)/sum(actual).",
+  "holdout_origin_weeks": [
+    "2024-10-21",
+    "2024-10-28",
+    "2024-11-04",
+    "2024-11-11",
+    "2024-11-18",
+    "2024-11-25",
+    "2024-12-02",
+    "2024-12-09",
+    "2024-12-16",
+    "2024-12-23"
+  ],
+  "scored_holdout_origin_weeks": [
+    "2024-10-21",
+    "2024-10-28",
+    "2024-11-04",
+    "2024-11-11",
+    "2024-11-18",
+    "2024-11-25",
+    "2024-12-02",
+    "2024-12-09",
+    "2024-12-16"
+  ],
+  "excluded_truncated_origin_weeks": [
+    "2024-12-23"
+  ],
+  "raw_data_last_date": "2024-12-31",
+  "part_a_training": {
+    "rows": 28336,
+    "last_origin": "2024-10-14",
+    "fits_per_model": 1
+  },
+  "part_b_training": {
+    "rows": 30766,
+    "last_origin": "2024-12-16",
+    "fits_per_model": 1,
+    "retrained_during_january": false
+  },
+  "january_batches": [
+    "batch_MI-006_2025-01-06.parquet",
+    "batch_MI-006_2025-01-13.parquet",
+    "batch_MI-006_2025-01-20.parquet",
+    "batch_MI-006_2025-01-27.parquet"
+  ],
+  "january_scored_origins": [
+    "2024-12-23",
+    "2024-12-30",
+    "2025-01-06",
+    "2025-01-13"
+  ],
+  "january_forecasts": 35,
+  "january_carried_forward_features": [
+    "category_trend",
+    "price_index"
+  ],
+  "january_contract_inconsistent_checks": [
+    "duplicate series-day rows",
+    "rows per series-day",
+    "share of calendar days with a row",
+    "units_sold per row: mean [min–max]",
+    "price_unit per row: mean [min–max]",
+    "stock_available per row: mean [min–max]",
+    "delivered_qty per row: mean [min–max]",
+    "delivery_days per row: mean [min–max]",
+    "promotion rate per row",
+    "units per row, promo / no-promo",
+    "weekly units per series (full weeks)"
+  ],
+  "history_rebuild_mismatches": 0,
+  "arrival_replay_feature_mismatches": 0,
+  "bootstrap": {
+    "unit": "sku x channel x region series",
+    "n_boot": 2000,
+    "seed": 42,
+    "interval": "percentile 95%"
+  },
+  "hyperparameters_tuned_on_holdout": false
+}

@@ -8,7 +8,7 @@ columns that can be concatenated onto models.forecast.ALL_FEATURE_COLS and
 passed, unmodified, into fit_predict_lgb.
 
 Not imported by any production file (engineer.py, enrich.py, forecast.py).
-Used only by notebooks/11b_dl_feature_experiment.ipynb and
+Used only by notebooks/05_feature_value/11b_dl_feature_experiment.ipynb and
 tests/test_dl_embeddings.py.
 """
 

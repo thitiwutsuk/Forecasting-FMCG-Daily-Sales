@@ -114,7 +114,14 @@ Forecasting FMCG Daily Sales/
 │   │   └── given_reference/  # originally-given weekly tables — reference only
 │   ├── interim/               # validated/cleaned intermediate tables
 │   └── processed/              # final modeling-ready feature tables
-├── notebooks/                  # numbered, one per phase
+├── notebooks/                   # grouped by business question, numbered within each
+│   ├── 00_foundation/            # Phases 2-5: EDA, validation, feature engineering, split strategy
+│   ├── 01_forecasting/           # Phases 6,7,12,13 — Q1 Forecasting
+│   ├── 02_promotions/            # Phases 8,8b — Q2 Promotions
+│   ├── 03_seasonality/           # Phase 9 — Q3 Seasonality
+│   ├── 04_cold_start/            # Phase 10 — Q4 Cold start
+│   ├── 05_feature_value/         # Phases 11,11b — Q5 Feature value
+│   └── weekly_base_exploration.ipynb
 ├── src/
 │   ├── data/                   # loading, validation, weekly base table
 │   ├── features/                # feature engineering
@@ -163,7 +170,7 @@ Forecasting FMCG Daily Sales/
 - [x] **Phase 8 — Promotion effect**: two-way fixed-effects regression estimates a **+28.4% uplift** [27.6%, 29.3%], p < 0.001
   - Consistent ~28–29% across all 5 categories
   - Estimate only — not proof of causal uplift or profitability
-  - Repeating on/off treatment audited in `notebooks/08b_promotion_robustness.ipynb`:
+  - Repeating on/off treatment audited in `notebooks/02_promotions/08b_promotion_robustness.ipynb`:
     - R `TwoWayFEWeights` + independent Python decomposition: **0 / 19,032** negative treated-cell weights
     - Exact-match WAS estimate: **+28.9%** [28.0%, 29.8%], close to TWFE
     - Distributed-lag check: no evidence of pull-forward over weeks 1–4 (lag sum −0.0074, p = 0.421; joint lags p = 0.870)
@@ -176,7 +183,7 @@ Forecasting FMCG Daily Sales/
 - [x] **Phase 11 — Feature ablation**: measured the accuracy contribution of every engineered feature
   - Calendar/lifecycle features matter most, ahead of lag/rolling history
   - Price and external enrichment add ~0 incrementally
-  - Supplementary check in `notebooks/11b_dl_feature_experiment.ipynb`: DL entity embeddings for sku/channel/region (trained leakage-safe per fold) add no incremental accuracy either — mean WAPE 0.2235 → 0.2237, paired t-test p = 0.538
+  - Supplementary check in `notebooks/05_feature_value/11b_dl_feature_experiment.ipynb`: DL entity embeddings for sku/channel/region (trained leakage-safe per fold) add no incremental accuracy either — mean WAPE 0.2235 → 0.2237, paired t-test p = 0.538
 
 ### Evaluation
 - [x] **Phase 12 — Model evaluation rollup**: fresh 7-fold CV, focused on Global LightGBM vs Global XGBoost
@@ -184,7 +191,7 @@ Forecasting FMCG Daily Sales/
   - Descriptive comparison only; LightGBM remains the primary model for Phase 13
   - Supporting core models, coverage-aware comparisons, ablations and DL embeddings are included; ETS/cold-start remain separately labeled recorded references
   - This Phase 12 run predates the CatBoost addition; CatBoost is recorded in Phase 7 and is not included in this comparison table
-  - [Notebook](notebooks/12_model_evaluation.ipynb) · [Comparison table](reports/phase12/model_comparison.csv) · [Primary comparison chart](reports/phase12/model_comparison.png) · [Run manifest](reports/phase12/run_manifest.json)
+  - [Notebook](notebooks/01_forecasting/12_model_evaluation.ipynb) · [Comparison table](reports/phase12/model_comparison.csv) · [Primary comparison chart](reports/phase12/model_comparison.png) · [Run manifest](reports/phase12/run_manifest.json)
   - Run on Python 3.12.5 / Windows; environment and source hashes are recorded without overwriting historical Phase 7 results
   - No fit/scoring on the reserved 10 holdout origin weeks; no January 2025 batch scoring
 - [x] **Phase 13 — Future holdout backtest**: final holdout + January 2025 batches, each model fitted once, nothing tuned on the test data
@@ -205,7 +212,7 @@ Forecasting FMCG Daily Sales/
   - Run on Python 3.9.6 / macOS with the exact `requirements-lock.txt` pins (LightGBM 4.6.0, XGBoost 2.1.4, scikit-learn 1.6.1, CatBoost 1.2.10); environment and input hashes in `reports/phase13/run_manifest.json`
     - Cross-check in the same environment: re-running Phase 12's CV reproduces XGBoost bit-for-bit and LightGBM's mean WAPE to 0.223513 vs 0.223517 (per-fold drift ≤ 0.0007, cross-OS; LightGBM output is identical at 1 vs 4 threads)
     - On macOS, LightGBM/XGBoost wheels need an OpenMP runtime (`brew install libomp`)
-  - [Notebook](notebooks/13_future_holdout_backtest.ipynb) · [Results](reports/phase13/) · code in `src/models/holdout.py`, tests in `tests/test_holdout.py`
+  - [Notebook](notebooks/01_forecasting/13_future_holdout_backtest.ipynb) · [Results](reports/phase13/) · code in `src/models/holdout.py`, tests in `tests/test_holdout.py`
 
 ### Deployment & Communication
 - [ ] **Phase 14 — Communication deliverable**: `reports/final_report.md` with business-framed findings
@@ -226,7 +233,7 @@ readers. `reports/final_report.md` stays in English for a hiring-manager audienc
   - Negative-weight audit: **0 / 19,032** treated cells receive negative weights (independently reproduced in Python and official R `TwoWayFEWeights`)
   - Exact-match WAS: **+28.9%** [28.0%, 29.8%]
   - Recurring-treatment distributed-lag check: no statistical evidence of pull-forward over weeks 1–4 (lag sum −0.0074, p = 0.421; joint lags p = 0.870; placebo leads p = 0.222)
-  - Addresses weighting and short-horizon displacement under the stated model only — does not prove causal identification, absence of pull-forward, or profitability (see `notebooks/08b_promotion_robustness.ipynb`)
+  - Addresses weighting and short-horizon displacement under the stated model only — does not prove causal identification, absence of pull-forward, or profitability (see `notebooks/02_promotions/08b_promotion_robustness.ipynb`)
 - **Seasonality**: variance share ranges from ~70% (Milk) to 87% (SnackBar) — category-dependent, not a single business-wide factor
   - Milk's naive sum-of-SKUs STL initially looked trend-dominated (58% trend / 8% seasonal)
     - Artifact of Milk's active SKU count growing 2→7 over the window — summing across a growing SKU count inflates apparent trend

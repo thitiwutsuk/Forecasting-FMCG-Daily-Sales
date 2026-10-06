@@ -58,7 +58,7 @@ ordinal-encode categorical columns เพราะ sklearn RF ไม่รอง
 recency จริงได้ ไม่ใช่ข้อจำกัดของไลบรารี — sklearn เวอร์ชันที่ pin ไว้ (1.9) รองรับ NaN โดยตรงอยู่แล้วตั้งแต่ 1.4)
 ใช้ตรวจว่าผลของ Global pooled LightGBM ไม่ได้ดีเพราะบังเอิญ
 เจาะจงกับ implementation ตัวเดียว — เทียบราย fold พร้อม standard deviation และ paired significance test (ไม่ใช่แค่
-ค่าเฉลี่ยตัวเดียว) ดู [`07_core_forecasting.ipynb`](notebooks/07_core_forecasting.ipynb) ส่วนที่ 2-4
+ค่าเฉลี่ยตัวเดียว) ดู [`07_core_forecasting.ipynb`](notebooks/01_forecasting/07_core_forecasting.ipynb) ส่วนที่ 2-4
 
 **หมายเหตุ**: `min_child_samples=20` (LightGBM), `min_samples_leaf=20` (Random Forest) และ `min_child_weight=20`
 (XGBoost) ตั้งเลขเดียวกันเพื่อให้ "ความพยายาม regularize" ใกล้เคียงกัน ไม่ใช่เพราะทั้งสามค่ามีความหมายเดียวกันทุก
@@ -70,7 +70,7 @@ derivative) ของแถวใน leaf ซึ่งเท่ากับจ�
 
 ### วิธีเปรียบเทียบ
 1. WAPE บน walk-forward CV fold **ชุดเดียวกัน** ทุกโมเดล (7 fold)
-2. Final holdout (10 สัปดาห์สุดท้าย) แยกต่างหากจาก CV average — ทำแล้วใน Phase 13 (fit ครั้งเดียว ไม่ปรับอะไรจากผล): Global LightGBM WAPE 0.2238 บน 9 สัปดาห์ที่ label ครบ เทียบกับ CV 0.2235 (สัปดาห์สุดท้ายมี label เพียง 2/7 วันจึงแยกออก) ดู [`13_future_holdout_backtest.ipynb`](notebooks/13_future_holdout_backtest.ipynb)
+2. Final holdout (10 สัปดาห์สุดท้าย) แยกต่างหากจาก CV average — ทำแล้วใน Phase 13 (fit ครั้งเดียว ไม่ปรับอะไรจากผล): Global LightGBM WAPE 0.2238 บน 9 สัปดาห์ที่ label ครบ เทียบกับ CV 0.2235 (สัปดาห์สุดท้ายมี label เพียง 2/7 วันจึงแยกออก) ดู [`13_future_holdout_backtest.ipynb`](notebooks/01_forecasting/13_future_holdout_backtest.ipynb)
 3. **เช็ค feature importance เพิ่ม** เพื่อยืนยันว่าโมเดลที่ชนะเรียนรู้อะไรที่สมเหตุสมผลจริง ไม่ใช่แค่ตัวเลขต่ำเพราะบังเอิญ
 4. **แกน library**: เทียบราย fold + standard deviation ระหว่าง LightGBM, XGBoost, Random Forest, CatBoost — ทดสอบนัยสำคัญ
    (paired t-test ข้าม fold) ของ **LightGBM (โมเดลหลัก) เทียบกับ challenger ทั้งสามตัวแยกกัน** คือ LightGBM vs

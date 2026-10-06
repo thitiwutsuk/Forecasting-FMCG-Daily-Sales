@@ -2,7 +2,7 @@
 for the originally-given `data/raw/weekly_df_final_for_modeling.csv`).
 
 Every derivation rule below was verified against the given table before being used
-here (see `notebooks/04_feature_engineering.ipynb`, Section 0), except
+here (see `notebooks/00_foundation/04_feature_engineering.ipynb`, Section 0), except
 `is_holiday_week`/`is_holiday_peak`: the given table's values for those two columns
 follow no reconstructible rule (several offset/window hypotheses against a Polish
 holiday calendar were tested and none reached more than ~95% agreement, with mismatch

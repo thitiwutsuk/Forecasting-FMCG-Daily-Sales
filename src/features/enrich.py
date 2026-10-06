@@ -5,7 +5,7 @@ and `inflation_index` vary by sales channel within the same week/region, even th
 weather and national inflation cannot plausibly depend on which channel a product is
 sold through. The within-week-across-channel noise in that prototype has a standard
 deviation several times larger than its own trend/seasonal range (see
-`notebooks/04_feature_engineering.ipynb`), so the true signal cannot be recovered from
+`notebooks/00_foundation/04_feature_engineering.ipynb`), so the true signal cannot be recovered from
 it — these functions regenerate every enrichment column deterministically at the grain
 where it plausibly belongs, instead of patching the buggy file.
 
@@ -122,7 +122,7 @@ def compute_internal_aggregates(daily: pd.DataFrame) -> pd.DataFrame:
     """price_avg, promo_rate, stock_avg, deliveries per sku x channel x region x week.
 
     Formula verified against the MI-006 prototype (0 mismatches over 1,349 rows) in
-    notebooks/04_feature_engineering.ipynb before generalizing to all 30 SKUs.
+    notebooks/00_foundation/04_feature_engineering.ipynb before generalizing to all 30 SKUs.
     """
     out = []
     for keys, g in daily.groupby(["sku", "channel", "region"]):

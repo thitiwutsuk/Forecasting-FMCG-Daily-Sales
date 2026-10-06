@@ -46,7 +46,7 @@ def _text(value):
 
 def load_feature_groups(root, all_features):
     """Read the literal Phase 11 partition, never execute an old notebook."""
-    path = Path(root) / "notebooks/11_feature_ablation.ipynb"
+    path = Path(root) / "notebooks/05_feature_value/11_feature_ablation.ipynb"
     notebook = json.loads(path.read_text(encoding="utf-8"))
     for cell in notebook["cells"]:
         if cell["cell_type"] != "code":
@@ -271,8 +271,8 @@ def recorded_table(path, columns, expected_values=None):
 def load_recorded_results(root):
     """ETS and cold-start are historical references, not fresh comparable CV."""
     root = Path(root)
-    ets_path = root / "notebooks/07_core_forecasting.ipynb"
-    cold_path = root / "notebooks/10_cold_start.ipynb"
+    ets_path = root / "notebooks/01_forecasting/07_core_forecasting.ipynb"
+    cold_path = root / "notebooks/04_cold_start/10_cold_start.ipynb"
     ets, ets_source = recorded_table(ets_path, ["model"] + METRICS,
         expected_values={"model": {"ETS (Holt-Winters)", "Global LightGBM (same top-5 series)"}})
     cold_columns = ["window", "Analog WAPE", "Meta-learner WAPE", "Full model WAPE"]
@@ -286,7 +286,7 @@ def load_recorded_results(root):
         records.append(dict(
             model_id="recorded_ets" if row["model"].startswith("ETS") else "recorded_lgb_top5",
             model=row["model"], phase="7", comparison_group="recorded_ets_top5",
-            source="recorded", source_notebook="notebooks/07_core_forecasting.ipynb",
+            source="recorded", source_notebook="notebooks/01_forecasting/07_core_forecasting.ipynb",
             **{k: float(row[k]) for k in METRICS},
             notes="Recorded 3-decimal scores; 5 series selected on the full table. ETS uses a fixed-origin multi-step forecast, "
                   "with origin/target alignment different from ML; successful-fit coverage is not recorded. "
@@ -298,7 +298,7 @@ def load_recorded_results(root):
             records.append(dict(
                 model_id=f"recorded_cold_{window}_{col.split()[0].lower()}", model=label, phase="10",
                 comparison_group=f"recorded_cold_{window}", source="recorded",
-                source_notebook="notebooks/10_cold_start.ipynb", WAPE=float(row[col]),
+                source_notebook="notebooks/04_cold_start/10_cold_start.ipynb", WAPE=float(row[col]),
                 notes=f"Recorded 3-decimal WAPE, {row['window']}; 5 held-out SKUs, not time-respecting CV. "
                       "Age starts at first modeling-table appearance, not zero-history launch. "
                       "Analog may score fewer rows than ML. MAE/RMSE/SMAPE/counts/std/coverage unavailable (N/A); no rank.",
@@ -327,21 +327,21 @@ def run_cv(root, progress=print, checkpoint_dir=None):
     dfb = add_baseline_predictions(cv)
     groups = load_feature_groups(root, ALL_FEATURE_COLS)
     registry = {m: dict(model=label, phase=str(phase), comparison_group="core_cv",
-                       source_notebook=f"notebooks/{'06_baseline_models' if phase == 6 else '07_core_forecasting'}.ipynb",
+                       source_notebook=f"notebooks/01_forecasting/{'06_baseline_models' if phase == 6 else '07_core_forecasting'}.ipynb",
                        notes="Own finite-prediction coverage; macro mean of 7 folds; rank only within identical key cohorts.")
                 for m, (label, phase) in CORE.items()}
     for group in groups:
         registry[f"without_{group}"] = dict(model=f"LightGBM without {group}", phase="11",
-            comparison_group="ablation_cv", source_notebook="notebooks/11_feature_ablation.ipynb",
+            comparison_group="ablation_cv", source_notebook="notebooks/05_feature_value/11_feature_ablation.ipynb",
             notes="Delta vs the same-run full LightGBM; positive delta means worse WAPE. No new significance claim.")
     registry["lgb_dl"] = dict(model="LightGBM + DL embeddings", phase="11b", comparison_group="dl_cv",
-        source_notebook="notebooks/11b_dl_feature_experiment.ipynb",
+        source_notebook="notebooks/05_feature_value/11b_dl_feature_experiment.ipynb",
         notes="Embeddings fit on training fold only; delta vs same-run LightGBM. No new significance claim.")
     cache = None
     if checkpoint_dir is not None:
         inputs = ["data/processed/weekly_features.csv", "src/models/evaluation.py", "src/models/forecast.py",
                   "src/models/baseline.py", "src/models/metrics.py", "src/splits/walk_forward.py",
-                  "src/features/dl_embeddings.py", "notebooks/11_feature_ablation.ipynb"]
+                  "src/features/dl_embeddings.py", "notebooks/05_feature_value/11_feature_ablation.ipynb"]
         identity = dict(files={p: file_hash(root / p) for p in inputs}, split=SPLIT_CONFIG,
                         python=platform.python_version(), os=platform.platform(),
                         packages={p: importlib.metadata.version(p) for p in
@@ -431,8 +431,8 @@ def make_manifest(root, folds, holdout, groups, recorded_sources):
                 ["numpy", "pandas", "scikit-learn", "scipy", "lightgbm", "xgboost", "torch", "matplotlib", "statsmodels", "nbformat", "nbclient"]}
     files = ["data/processed/weekly_features.csv", "src/models/evaluation.py", "src/models/forecast.py",
              "src/models/baseline.py", "src/models/metrics.py", "src/splits/walk_forward.py",
-             "src/features/dl_embeddings.py", "notebooks/11_feature_ablation.ipynb", "requirements-lock.txt"]
-    reference, reference_source = recorded_table(root / "notebooks/07_core_forecasting.ipynb", ["model", "mean_WAPE", "std_WAPE"])
+             "src/features/dl_embeddings.py", "notebooks/05_feature_value/11_feature_ablation.ipynb", "requirements-lock.txt"]
+    reference, reference_source = recorded_table(root / "notebooks/01_forecasting/07_core_forecasting.ipynb", ["model", "mean_WAPE", "std_WAPE"])
     return dict(
         created_at_utc=datetime.now(timezone.utc).isoformat(), source_commit=git("rev-parse", "HEAD"),
         upstream_commit=git("rev-parse", "origin/main"), git_status_at_run=git("status", "--porcelain"),

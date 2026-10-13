@@ -83,3 +83,39 @@ def test_phase10_evaluation_skus_have_valid_temporal_analog_mappings():
 
     for target_sku, analog_sku in analogs.items():
         assert sku_attrs.loc[analog_sku, "first_seen"] < sku_attrs.loc[target_sku, "first_seen"]
+
+
+def test_training_cutoff_requires_completed_target_week():
+    from models.cold_start import training_before_launch
+    df = pd.DataFrame({"sku": ["OLD", "OLD", "OLD", "NEW"],
+                       "week": pd.to_datetime(["2023-01-02", "2023-01-09", "2023-01-16", "2023-01-02"])})
+    train = training_before_launch(df, ["NEW"], pd.Timestamp("2023-01-16"))
+    assert train.index.tolist() == [0]
+
+
+@pytest.mark.parametrize("function_name", ["meta_learner_forecast", "mature_model_forecast"])
+def test_models_use_individual_launch_cutoffs(monkeypatch, function_name):
+    import models.cold_start as cold
+    df = pd.DataFrame({"sku": ["OLD", "OLD", "OLD", "A", "B"],
+        "week": pd.to_datetime(["2023-01-02", "2023-01-09", "2023-03-06", "2023-02-13", "2023-02-20"]),
+        "sku_age": [0, 1, 9, 4, 4]})
+    calls = []
+    def fake_fit(train, test, feature_cols):
+        cutoff = cold.launch_week(df, str(df.loc[test.index[0], "sku"]))
+        assert (pd.to_datetime(train.week) + pd.Timedelta(days=14) <= cutoff).all()
+        assert not train.sku.isin(["A", "B"]).any()
+        calls.append(len(train))
+        return [1.0] * len(test)
+    monkeypatch.setattr(cold, "fit_predict_lgb", fake_fit)
+    monkeypatch.setattr(cold, "NON_LAG_FEATURE_COLS", ["sku", "sku_age"])
+    monkeypatch.setattr(cold, "ALL_FEATURE_COLS", ["sku", "sku_age"])
+    result = getattr(cold, function_name)(df, ["A", "B"])
+    assert calls == [1, 2]
+    assert result.index.tolist() == [3, 4]
+
+
+def test_launch_week_rejects_inconsistent_age():
+    from models.cold_start import launch_week
+    df = pd.DataFrame({"sku": ["A", "A"], "week": pd.to_datetime(["2023-02-06", "2023-02-13"]), "sku_age": [4, 4]})
+    with pytest.raises(ValueError, match="inconsistent"):
+        launch_week(df, "A")

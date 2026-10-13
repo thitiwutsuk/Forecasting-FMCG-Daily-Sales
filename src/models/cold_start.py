@@ -64,29 +64,59 @@ def analog_forecast(df: pd.DataFrame, cold_start_skus: list, sku_attrs: pd.DataF
     return rows
 
 
-def meta_learner_forecast(df: pd.DataFrame, cold_start_skus: list) -> pd.DataFrame:
-    """Train a LightGBM restricted to non-history-dependent features on mature SKUs only,
-    predict target_next_week for the cold-start SKUs' rows (their entire lifetime, so the
-    accuracy-vs-sku_age curve can be traced).
-    """
-    dfc = prepare_categoricals(df)
-    train = dfc[~dfc.sku.isin(cold_start_skus)]
-    test = dfc[dfc.sku.isin(cold_start_skus)].copy()
+def launch_week(df: pd.DataFrame, sku: str) -> pd.Timestamp:
+    """Recover the SKU launch Monday from the original (untrimmed) age."""
+    rows = df[df.sku == sku]
+    if rows.empty:
+        raise ValueError(f"no evaluation rows for {sku!r}")
+    origins = pd.to_datetime(rows.week) - pd.to_timedelta(rows.sku_age * 7, unit="D")
+    if origins.nunique() != 1:
+        raise ValueError(f"inconsistent launch week for {sku!r}")
+    return pd.Timestamp(origins.iloc[0])
 
-    pred = fit_predict_lgb(train, test, feature_cols=NON_LAG_FEATURE_COLS)
-    test["pred_meta_learner"] = pred
-    return test
+
+def training_before_launch(df: pd.DataFrame, cold_start_skus: list, cutoff: pd.Timestamp) -> pd.DataFrame:
+    """Keep only labels fully observed before the launch Monday.
+
+    Rows are Monday-labelled, left-closed weeks. A row at W predicts sales
+    during [W+7d, W+14d), so its label is available only at W+14d.
+    """
+    available_at = pd.to_datetime(df.week) + pd.Timedelta(days=14)
+    return df[(~df.sku.isin(cold_start_skus)) & (available_at <= cutoff)].copy()
+
+
+def _launch_model_forecast(df, cold_start_skus, feature_cols, prediction_col):
+    pieces = []
+    for sku in cold_start_skus:
+        cutoff = launch_week(df, sku)
+        train = training_before_launch(df, cold_start_skus, cutoff)
+        test = df[df.sku == sku].copy()
+        if train.empty:
+            raise ValueError(f"no training labels available before launch of {sku!r}")
+        # Align category vocabularies using training values only. Unseen SKU IDs
+        # become missing categories rather than invented training levels.
+        train = prepare_categoricals(train)
+        model_test = test.copy()
+        for col in feature_cols:
+            if isinstance(train[col].dtype, pd.CategoricalDtype):
+                model_test[col] = pd.Categorical(test[col], categories=train[col].cat.categories)
+        test[prediction_col] = fit_predict_lgb(train, model_test, feature_cols=feature_cols)
+        test["train_cutoff"] = cutoff
+        test["train_label_available_max"] = pd.to_datetime(train.week).max() + pd.Timedelta(days=14)
+        test["train_rows"] = len(train)
+        pieces.append(test)
+    return pd.concat(pieces).sort_index()
+
+
+def meta_learner_forecast(df: pd.DataFrame, cold_start_skus: list) -> pd.DataFrame:
+    """Frozen launch-time model without lag features, for short-history rows.
+
+    This still uses current-week sales: it is NOT a zero-history forecast.
+    All evaluation SKUs are excluded; training labels precede each SKU launch.
+    """
+    return _launch_model_forecast(df, cold_start_skus, NON_LAG_FEATURE_COLS, "pred_meta_learner")
 
 
 def mature_model_forecast(df: pd.DataFrame, cold_start_skus: list) -> pd.DataFrame:
-    """Same setup but with the FULL feature set (including lag/rolling) — used to show
-    how much lag features would help once the cold-start SKU actually has history
-    (only meaningful for rows where sku_age is large enough that lag_1/lag_2 aren't NaN).
-    """
-    dfc = prepare_categoricals(df)
-    train = dfc[~dfc.sku.isin(cold_start_skus)]
-    test = dfc[dfc.sku.isin(cold_start_skus)].copy()
-
-    pred = fit_predict_lgb(train, test, feature_cols=ALL_FEATURE_COLS)
-    test["pred_full_model"] = pred
-    return test
+    """Frozen launch-time model using history available at each scoring week."""
+    return _launch_model_forecast(df, cold_start_skus, ALL_FEATURE_COLS, "pred_full_model")

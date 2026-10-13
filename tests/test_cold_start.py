@@ -119,3 +119,29 @@ def test_launch_week_rejects_inconsistent_age():
     df = pd.DataFrame({"sku": ["A", "A"], "week": pd.to_datetime(["2023-02-06", "2023-02-13"]), "sku_age": [4, 4]})
     with pytest.raises(ValueError, match="inconsistent"):
         launch_week(df, "A")
+
+
+def test_analog_uses_next_week_label_and_only_prelaunch_trajectory():
+    from models.cold_start import analog_forecast
+    df = pd.DataFrame({"sku": ["OLD", "OLD", "NEW", "NEW"],
+        "week": pd.to_datetime(["2023-01-02", "2023-01-09", "2023-01-23", "2023-01-30"]),
+        "sku_age": [0, 1, 0, 1], "channel": ["Retail"] * 4, "region": ["North"] * 4,
+        "units_sold": [10, 20, 30, 40], "target_next_week": [20, 99, 40, 50]})
+    attrs = pd.DataFrame({"category": ["Milk", "Milk"], "segment": ["S", "S"],
+        "price_unit": [5., 5.], "first_seen": pd.to_datetime(["2023-01-02", "2023-01-23"])}, index=["OLD", "NEW"])
+    result = analog_forecast(df, ["NEW"], attrs)
+    assert result.pred_analog.tolist() == [20, 99]
+    df.loc[1, "week"] = pd.Timestamp("2023-01-16")
+    result = analog_forecast(df, ["NEW"], attrs)
+    assert pd.isna(result.pred_analog.iloc[1])
+
+
+def test_launch_attributes_ignore_future_prices_and_pack_types():
+    from models.cold_start import launch_analog_attributes
+    daily = pd.DataFrame({"sku": ["OLD", "OLD", "NEW", "NEW"],
+        "date": pd.to_datetime(["2023-01-02", "2023-03-01", "2023-02-01", "2023-03-01"]),
+        "category": ["Milk"] * 4, "segment": ["S"] * 4, "price_unit": [5., 999., 6., 999.]})
+    attrs = launch_analog_attributes(daily, "NEW", pd.Timestamp("2023-01-30"))
+    assert attrs.loc["OLD", "price_unit"] == 5.
+    assert attrs.loc["NEW", "price_unit"] == 6.
+    assert "pack_type" not in attrs.columns

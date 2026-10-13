@@ -41,27 +41,60 @@ def find_analog_sku(target_sku: str, sku_attrs: pd.DataFrame, candidate_skus: li
     return pool.assign(price_dist=(pool["price_unit"] - target["price_unit"]).abs())["price_dist"].idxmin()
 
 
-def analog_forecast(df: pd.DataFrame, cold_start_skus: list, sku_attrs: pd.DataFrame) -> pd.DataFrame:
-    """For each cold-start SKU, forecast target_next_week using the matched analog SKU's
-    own units_sold at the same (channel, region, sku_age) — i.e. its early trajectory.
+def launch_analog_attributes(daily: pd.DataFrame, target_sku: str, cutoff: pd.Timestamp) -> pd.DataFrame:
+    """Candidate price averages from completed pre-launch observations only.
 
-    `sku_attrs` must include a `first_seen` column (see find_analog_sku) so the match is
-    restricted to SKUs that actually existed yet at the target's launch time.
+    Target price is a first-day observed-price proxy for a launch price supplied
+    by a planner. It is not claimed to be known before launch in this dataset.
+    Pack type is deliberately excluded: it varies within each SKU.
     """
-    mature_skus = [s for s in df["sku"].unique() if s not in cold_start_skus]
-    analogs = {sku: find_analog_sku(sku, sku_attrs, mature_skus) for sku in cold_start_skus}
+    first_seen = daily.groupby("sku")["date"].min()
+    history = daily[pd.to_datetime(daily.date) < cutoff]
+    attrs = history.groupby("sku").agg(category=("category", "first"),
+        segment=("segment", "first"), price_unit=("price_unit", "mean"))
+    target = daily[(daily.sku == target_sku) & (daily.date == first_seen.loc[target_sku])]
+    attrs.loc[target_sku] = [target.category.iloc[0], target.segment.iloc[0], target.price_unit.mean()]
+    attrs["first_seen"] = first_seen.reindex(attrs.index)
+    return attrs
 
-    analog_lookup = df[df.sku.isin(analogs.values())].set_index(["sku", "channel", "region", "sku_age"])["units_sold"]
 
-    rows = df[df.sku.isin(cold_start_skus)].copy()
-    rows["analog_sku"] = rows["sku"].map(analogs)
+def find_launch_analog(target_sku, attrs, candidate_skus, cutoff):
+    pool = attrs.loc[attrs.index.isin(candidate_skus)]
+    pool = pool[pool.first_seen < cutoff].sort_index()
+    if pool.empty:
+        raise ValueError(f"no temporally-eligible analog for {target_sku!r}")
+    target = attrs.loc[target_sku]
+    for keys in (["category", "segment"], ["category"], []):
+        matches = pool if not keys else pool[(pool[keys] == target[keys]).all(axis=1)]
+        if not matches.empty:
+            return (matches.price_unit - target.price_unit).abs().idxmin()
 
-    def lookup_pred(row):
-        key = (row["analog_sku"], row["channel"], row["region"], row["sku_age"])
-        return analog_lookup.get(key, np.nan)
 
-    rows["pred_analog"] = rows.apply(lookup_pred, axis=1)
-    return rows
+def analog_forecast(df: pd.DataFrame, cold_start_skus: list, sku_attrs: pd.DataFrame,
+                    daily: pd.DataFrame = None) -> pd.DataFrame:
+    """Borrow the analog's NEXT-week sales at the same age/channel/region.
+
+    With daily supplied, matching attributes are reconstructed at launch.
+    Without daily, the caller must supply point-in-time price attributes.
+    Trajectories are frozen at launch; unavailable labels remain NaN.
+    """
+    candidates = [s for s in df.sku.unique() if s not in cold_start_skus]
+    pieces = []
+    for sku in cold_start_skus:
+        cutoff = launch_week(df, sku)
+        attrs = launch_analog_attributes(daily, sku, cutoff) if daily is not None else sku_attrs
+        analog = find_launch_analog(sku, attrs, candidates, cutoff)
+        history = training_before_launch(df, cold_start_skus, cutoff)
+        lookup = history[history.sku == analog].set_index(["channel", "region", "sku_age"])["target_next_week"]
+        if not lookup.index.is_unique:
+            raise ValueError("duplicate analog channel/region/age keys")
+        rows = df[df.sku == sku].copy()
+        keys = pd.MultiIndex.from_frame(rows[["channel", "region", "sku_age"]])
+        rows["pred_analog"] = lookup.reindex(keys).to_numpy()
+        rows["analog_sku"] = analog
+        rows["train_cutoff"] = cutoff
+        pieces.append(rows)
+    return pd.concat(pieces).sort_index()
 
 
 def launch_week(df: pd.DataFrame, sku: str) -> pd.Timestamp:

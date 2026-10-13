@@ -279,7 +279,7 @@ def load_recorded_results(root):
     cold, cold_source = recorded_table(cold_path, cold_columns)
     if {r["model"] for r in ets} != {"ETS (Holt-Winters)", "Global LightGBM (same top-5 series)"}:
         raise ValueError("unexpected recorded ETS models")
-    if {r["window"] for r in cold} != {"weeks 0-7 (launch window)", "weeks 8+"}:
+    if {r["window"] for r in cold} != {"age 4-11 (short history)", "age 12+"}:
         raise ValueError("unexpected recorded cold-start windows")
     records = []
     for row in ets:
@@ -293,15 +293,15 @@ def load_recorded_results(root):
                   "No fresh-CV rank. Counts/std/coverage unavailable (N/A).",
         ))
     for row in cold:
-        window = "0_7" if row["window"].startswith("weeks 0") else "8_plus"
+        window = "age4_11" if row["window"].startswith("age 4") else "age12_plus"
         for col, label in [("Analog WAPE", "Analog"), ("Meta-learner WAPE", "Meta-learner"), ("Full model WAPE", "Full LightGBM")]:
             records.append(dict(
                 model_id=f"recorded_cold_{window}_{col.split()[0].lower()}", model=label, phase="10",
                 comparison_group=f"recorded_cold_{window}", source="recorded",
                 source_notebook="notebooks/04_cold_start/10_cold_start.ipynb", WAPE=float(row[col]),
-                notes=f"Recorded 3-decimal WAPE, {row['window']}; 5 held-out SKUs, not time-respecting CV. "
-                      "Age starts at first modeling-table appearance, not zero-history launch. "
-                      "Analog may score fewer rows than ML. MAE/RMSE/SMAPE/counts/std/coverage unavailable (N/A); no rank.",
+                notes=f"Recorded 3-decimal WAPE, {row['window']}; 5 held-out SKUs, frozen per-launch models; not rolling CV. "
+                      "Actual SKU age starts at 4 in the trimmed table; not zero-history launch. "
+                      "Common prediction rows for all three methods; see notebook for coverage. MAE/RMSE/SMAPE/counts/std/coverage not extracted here (N/A); no rank.",
             ))
     return pd.DataFrame(records), [ets_source, cold_source]
 

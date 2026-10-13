@@ -1,8 +1,7 @@
 """Cold-start forecasting (Phase 10): analog-based and meta-learner approaches
-for SKUs with no sales history yet.
+for unseen SKUs with short sales histories and frozen launch-time training.
 """
 
-import numpy as np
 import pandas as pd
 
 from .forecast import ALL_FEATURE_COLS, HISTORY_DEPENDENT_COLS, fit_predict_lgb, prepare_categoricals

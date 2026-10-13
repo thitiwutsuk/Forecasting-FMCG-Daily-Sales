@@ -164,7 +164,7 @@ def test_recorded_results_have_provenance_and_no_fabricated_metrics():
     assert all(s["recorded_values"] for s in sources)
     cold = recorded[recorded.phase.eq("10")]
     assert cold[["MAE", "RMSE", "SMAPE"]].isna().all().all()
-    assert set(cold.comparison_group) == {"recorded_cold_0_7", "recorded_cold_8_plus"}
+    assert set(cold.comparison_group) == {"recorded_cold_age4_11", "recorded_cold_age12_plus"}
 
 
 def test_missing_recorded_output_fails_instead_of_reading_readme(tmp_path):

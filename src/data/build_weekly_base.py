@@ -164,7 +164,7 @@ BASE_COLUMNS = [
 ]
 
 
-def build_weekly_base(daily: pd.DataFrame) -> pd.DataFrame:
+def build_weekly_base(daily: pd.DataFrame, *, keep_early_history: bool = False) -> pd.DataFrame:
     """Build the weekly base modeling table from raw daily data.
 
     Reproduces the schema of the originally-given `weekly_df_final_for_modeling.csv`
@@ -173,6 +173,9 @@ def build_weekly_base(daily: pd.DataFrame) -> pd.DataFrame:
 
     Drops leading/trailing rows per group where lag/rolling/target can't be fully
     computed, matching the given table's boundary-trim convention.
+
+    Set keep_early_history=True for launch experiments: retain missing lag/rolling
+    values without inventing sales history, but still remove rows without a label.
     """
     daily = daily.copy()
     daily["date"] = pd.to_datetime(daily["date"])
@@ -183,8 +186,9 @@ def build_weekly_base(daily: pd.DataFrame) -> pd.DataFrame:
     weekly = _add_holiday_flags(weekly)
     weekly = _add_lag_rolling_target(weekly)
 
-    weekly = weekly.dropna(
-        subset=["lag_1", "lag_2", "rolling_mean_4", "rolling_std_4", "momentum", "target_next_week"]
-    ).reset_index(drop=True)
+    required = ["target_next_week"] if keep_early_history else [
+        "lag_1", "lag_2", "rolling_mean_4", "rolling_std_4", "momentum", "target_next_week"
+    ]
+    weekly = weekly.dropna(subset=required).reset_index(drop=True)
 
     return weekly[BASE_COLUMNS]

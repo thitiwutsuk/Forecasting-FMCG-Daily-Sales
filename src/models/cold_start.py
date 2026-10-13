@@ -9,6 +9,35 @@ from .forecast import ALL_FEATURE_COLS, HISTORY_DEPENDENT_COLS, fit_predict_lgb,
 NON_LAG_FEATURE_COLS = [c for c in ALL_FEATURE_COLS if c not in HISTORY_DEPENDENT_COLS]
 
 
+def build_early_history_table(daily: pd.DataFrame) -> pd.DataFrame:
+    """Core-only launch panel; current-week observations predict next week.
+
+    Missing history is left as NaN. SKU age is global across channels/regions;
+    observed_days marks partial launch weeks. No generated contextual enrichment
+    is mixed with the older table, preserving that experiment independently.
+    """
+    from data.build_weekly_base import build_weekly_base
+
+    daily = daily.copy()
+    daily["date"] = pd.to_datetime(daily.date)
+    attrs = daily[["sku", "category", "segment", "brand"]].drop_duplicates()
+    if attrs.sku.duplicated().any():
+        raise ValueError("category/segment/brand must be static per SKU")
+    weekly = build_weekly_base(daily, keep_early_history=True)
+    weekly = weekly.merge(attrs, on="sku", how="left", validate="many_to_one")
+    daily["week"] = daily.date - pd.to_timedelta(daily.date.dt.dayofweek, unit="D")
+    observed = daily.groupby(["sku", "channel", "region", "week"]).date.nunique().rename("observed_days")
+    weekly = weekly.merge(observed, on=["sku", "channel", "region", "week"], validate="one_to_one")
+    return weekly
+
+
+def early_history_feature_cols() -> list:
+    """Same core feature set for both early-history ML comparisons."""
+    from data.build_weekly_base import BASE_COLUMNS
+    core = set(BASE_COLUMNS) | {"category", "segment", "brand"}
+    return [c for c in ALL_FEATURE_COLS if c in core]
+
+
 def find_analog_sku(target_sku: str, sku_attrs: pd.DataFrame, candidate_skus: list) -> str:
     """Nearest existing SKU by category -> segment -> pack_type exact match, tie-broken
     by closest price_unit. Falls back to progressively coarser matches (category+pack_type,
@@ -140,15 +169,19 @@ def _launch_model_forecast(df, cold_start_skus, feature_cols, prediction_col):
     return pd.concat(pieces).sort_index()
 
 
-def meta_learner_forecast(df: pd.DataFrame, cold_start_skus: list) -> pd.DataFrame:
+def meta_learner_forecast(df: pd.DataFrame, cold_start_skus: list, feature_cols: list = None) -> pd.DataFrame:
     """Frozen launch-time model without lag features, for short-history rows.
 
     This still uses current-week sales: it is NOT a zero-history forecast.
     All evaluation SKUs are excluded; training labels precede each SKU launch.
     """
-    return _launch_model_forecast(df, cold_start_skus, NON_LAG_FEATURE_COLS, "pred_meta_learner")
+    cols = NON_LAG_FEATURE_COLS if feature_cols is None else [
+        c for c in feature_cols if c not in HISTORY_DEPENDENT_COLS
+    ]
+    return _launch_model_forecast(df, cold_start_skus, cols, "pred_meta_learner")
 
 
-def mature_model_forecast(df: pd.DataFrame, cold_start_skus: list) -> pd.DataFrame:
+def mature_model_forecast(df: pd.DataFrame, cold_start_skus: list, feature_cols: list = None) -> pd.DataFrame:
     """Frozen launch-time model using history available at each scoring week."""
-    return _launch_model_forecast(df, cold_start_skus, ALL_FEATURE_COLS, "pred_full_model")
+    cols = ALL_FEATURE_COLS if feature_cols is None else feature_cols
+    return _launch_model_forecast(df, cold_start_skus, cols, "pred_full_model")

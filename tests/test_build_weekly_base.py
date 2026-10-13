@@ -148,3 +148,25 @@ def test_build_weekly_base_output_schema():
     assert set(weekly.columns) == expected_cols
     assert weekly.isnull().sum().sum() == 0
     assert not weekly.duplicated(subset=["sku", "channel", "region", "week"]).any()
+
+
+def test_keep_early_history_preserves_missing_lags_and_existing_rows():
+    daily = _toy_daily(n_weeks=10)
+    expanded = build_weekly_base(daily, keep_early_history=True)
+    original = build_weekly_base(daily)
+    assert expanded.sku_age.tolist() == list(range(9))
+    assert expanded.loc[expanded.sku_age == 0, ["lag_1", "lag_2", "rolling_mean_4"]].isna().all().all()
+    assert expanded.loc[expanded.sku_age == 1, "lag_1"].iloc[0] == 140
+    assert expanded.target_next_week.notna().all()
+    pd.testing.assert_frame_equal(expanded[expanded.sku_age >= 4].reset_index(drop=True), original)
+
+
+def test_missing_early_features_do_not_use_later_sales():
+    daily = _toy_daily(n_weeks=10)
+    before = build_weekly_base(daily, keep_early_history=True)
+    daily.loc[daily.date >= "2022-01-17", "units_sold"] = 9999
+    after = build_weekly_base(daily, keep_early_history=True)
+    history = ["units_sold", "lag_1", "lag_2", "rolling_mean_4", "rolling_std_4", "momentum"]
+    pd.testing.assert_frame_equal(before.loc[before.sku_age <= 1, history], after.loc[after.sku_age <= 1, history])
+    # The target can change because it is a FUTURE outcome, never a feature.
+    assert before.loc[before.sku_age == 1, "target_next_week"].iloc[0] != after.loc[after.sku_age == 1, "target_next_week"].iloc[0]

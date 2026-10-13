@@ -145,3 +145,41 @@ def test_launch_attributes_ignore_future_prices_and_pack_types():
     assert attrs.loc["OLD", "price_unit"] == 5.
     assert attrs.loc["NEW", "price_unit"] == 6.
     assert "pack_type" not in attrs.columns
+
+
+def test_early_table_marks_partial_launch_week_and_channel_age():
+    from models.cold_start import build_early_history_table
+    dates = pd.date_range("2023-01-04", "2023-02-12", freq="D")
+    daily = pd.DataFrame({"date": dates, "sku": "A", "channel": "Retail", "region": "North",
+        "category": "Milk", "segment": "S", "brand": "B", "units_sold": 10,
+        "delivered_qty": 20, "price_unit": 5., "stock_available": 30., "promotion_flag": 0, "delivery_days": 1})
+    late = daily[daily.date >= "2023-01-09"].copy()
+    late["channel"] = "Online"
+    out = build_early_history_table(pd.concat([daily, late], ignore_index=True))
+    launch = out[(out.channel == "Retail") & (out.sku_age == 0)].iloc[0]
+    assert launch.observed_days == 5
+    assert pd.isna(launch.lag_1)
+    online_first = out[out.channel == "Online"].sort_values("week").iloc[0]
+    assert online_first.sku_age == 1 and pd.isna(online_first.lag_1)
+    assert not out.duplicated(["sku", "channel", "region", "week"]).any()
+
+
+def test_early_models_pass_missing_history_without_filling(monkeypatch):
+    import models.cold_start as cold
+    df = pd.DataFrame({"sku": ["OLD", "NEW", "NEW"],
+        "week": pd.to_datetime(["2023-01-02", "2023-02-06", "2023-02-13"]),
+        "sku_age": [0, 0, 1], "units_sold": [10., 20., 30.], "lag_1": [float("nan"), float("nan"), 20.]})
+    calls = []
+    def fake_fit(train, test, feature_cols):
+        calls.append(feature_cols)
+        if "lag_1" in feature_cols:
+            assert pd.isna(test.lag_1.iloc[0])
+            assert test.lag_1.iloc[1] == 20.
+        assert train.sku.tolist() == ["OLD"]
+        return [1., 2.]
+    monkeypatch.setattr(cold, "fit_predict_lgb", fake_fit)
+    cols = ["units_sold", "lag_1"]
+    meta = cold.meta_learner_forecast(df, ["NEW"], feature_cols=cols)
+    full = cold.mature_model_forecast(df, ["NEW"], feature_cols=cols)
+    assert calls == [["units_sold"], ["units_sold", "lag_1"]]
+    assert meta.sku.tolist() == full.sku.tolist() == ["NEW", "NEW"]

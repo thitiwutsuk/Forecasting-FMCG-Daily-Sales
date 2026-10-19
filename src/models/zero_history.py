@@ -44,8 +44,41 @@ def build_launch_records(daily: pd.DataFrame) -> pd.DataFrame:
     return rows.sort_values(["week", "sku", "channel", "region"]).reset_index(drop=True)
 
 
-def zero_history_forecast(records: pd.DataFrame, held_out_skus: list) -> pd.DataFrame:
-    """Fit on completed launch weeks of OTHER SKUs before target launch Monday.
+def build_seven_day_launch_records(daily: pd.DataFrame) -> pd.DataFrame:
+    """Recorded units in [SKU first observation, first observation + 7 days).
+
+    Every SKU has a seven-calendar-day target window. Active combinations are
+    inferred retrospectively from this window, not from a verified launch plan.
+    Days without records are not imputed. observed_days is audit only.
+    'week' is the launch-window START, which need not be a Monday; it is retained
+    for compatibility with zero_history_forecast, not a calendar-week label.
+    """
+    daily = daily.copy()
+    daily["date"] = pd.to_datetime(daily.date).dt.normalize()
+    attrs = daily[["sku", "category", "segment", "brand"]].drop_duplicates()
+    if attrs.sku.duplicated().any():
+        raise ValueError("category/segment/brand must be static per SKU")
+    first_seen = daily.groupby("sku").date.min()
+    start = daily.sku.map(first_seen)
+    end = start + pd.Timedelta(days=7)
+    window = daily[(daily.date >= start) & (daily.date < end) &
+                   (end <= daily.date.max() + pd.Timedelta(days=1))]
+    rows = window.groupby(["sku", "channel", "region"]).agg(
+        launch_units=("units_sold", "sum"), observed_days=("date", "nunique")
+    ).reset_index().merge(attrs, on="sku", validate="many_to_one")
+    rows["first_seen"] = rows.sku.map(first_seen)
+    rows["week"] = rows.first_seen
+    rows["launch_window_start"] = rows.first_seen
+    rows["label_available_at"] = rows.first_seen + pd.Timedelta(days=7)
+    rows["month"] = rows.first_seen.dt.month
+    rows["week_number"] = rows.first_seen.dt.isocalendar().week.astype(int)
+    rows["year"] = rows.first_seen.dt.year
+    return rows.sort_values(["week", "sku", "channel", "region"]).reset_index(drop=True)
+
+
+def zero_history_forecast(records: pd.DataFrame, held_out_skus: list, *,
+                          include_category_baseline: bool = False) -> pd.DataFrame:
+    """Fit completed launch windows of OTHER SKUs before target window start.
 
     Analog: same channel/region, best category/segment/brand match, then most
     recent completed launch and SKU ID. No observed target price breaks ties.
@@ -88,6 +121,24 @@ def zero_history_forecast(records: pd.DataFrame, held_out_skus: list) -> pd.Data
         test["pred_zero_analog"] = analog_values
         test["analog_sku"] = donors
         test["analog_label_available_at"] = donor_dates
+        if include_category_baseline:
+            means, levels, counts = [], [], []
+            for row in test.itertuples():
+                tiers = [
+                    ("category_channel_region", train[(train.category == row.category) &
+                        (train.channel == row.channel) & (train.region == row.region)]),
+                    ("category", train[train.category == row.category]),
+                    ("channel_region", train[(train.channel == row.channel) & (train.region == row.region)]),
+                    ("global", train),
+                ]
+                for level, pool in tiers:
+                    if not pool.empty:
+                        means.append(pool.launch_units.mean())
+                        levels.append(level); counts.append(len(pool))
+                        break
+            test["pred_category_mean"] = means
+            test["baseline_level"] = levels
+            test["baseline_donors"] = counts
         test["train_cutoff"] = cutoff
         test["train_label_available_max"] = train.label_available_at.max()
         test["train_rows"] = len(train)

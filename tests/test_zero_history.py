@@ -77,3 +77,81 @@ def test_all_held_out_skus_excluded(monkeypatch):
     monkeypatch.setattr(zero, "fit_predict_lgb", fake_fit)
     zero_history_forecast(toy_records(), ["LATE", "NEW"])
     assert seen == [[70.], [70.]]
+
+
+def seven_day_daily():
+    dates = pd.date_range("2023-01-04", "2023-01-22")
+    return pd.DataFrame({"date": dates, "sku": "A", "channel": "Retail", "region": "North",
+        "brand": "B", "category": "Milk", "segment": "S", "units_sold": 10})
+
+
+def test_seven_days_cross_calendar_week_and_exclude_eighth_day():
+    from models.zero_history import build_seven_day_launch_records
+    daily = seven_day_daily()
+    before = build_seven_day_launch_records(daily)
+    assert before.launch_units.tolist() == [70]
+    assert before.observed_days.tolist() == [7]
+    assert before.week.iloc[0] == pd.Timestamp("2023-01-04")
+    assert before.label_available_at.iloc[0] == pd.Timestamp("2023-01-11")
+    daily.loc[daily.date >= "2023-01-11", "units_sold"] = 9999
+    pd.testing.assert_frame_equal(before, build_seven_day_launch_records(daily))
+
+
+def test_seven_days_does_not_invent_missing_records_or_reset_channel_launch():
+    from models.zero_history import build_seven_day_launch_records
+    daily = seven_day_daily()
+    late = daily[daily.date >= "2023-01-08"].copy()
+    late["channel"] = "Online"
+    daily = daily[daily.date != "2023-01-06"]
+    out = build_seven_day_launch_records(pd.concat([daily, late]))
+    online = out[out.channel == "Online"].iloc[0]
+    retail = out[out.channel == "Retail"].iloc[0]
+    assert online.launch_units == 30 and online.observed_days == 3
+    assert retail.launch_units == 60 and retail.observed_days == 6
+    assert out.week.nunique() == 1
+    assert set(out.channel) == {"Retail", "Online"}
+
+
+def test_seven_days_excludes_right_censored_target():
+    from models.zero_history import build_seven_day_launch_records
+    daily = seven_day_daily().iloc[:6]
+    assert build_seven_day_launch_records(daily).empty
+
+
+def test_category_mean_uses_only_completed_other_launches(monkeypatch):
+    import models.zero_history as zero
+    monkeypatch.setattr(zero, "fit_predict_lgb", lambda *a, **kw: np.array([1.]))
+    records = toy_records()
+    extra = records.iloc[[0]].copy()
+    extra.sku = "OLD2"
+    extra.launch_units = 90.
+    records = pd.concat([records, extra], ignore_index=True)
+    out = zero_history_forecast(records, ["NEW"], include_category_baseline=True)
+    assert out.pred_category_mean.tolist() == [80.]
+    assert out.baseline_donors.tolist() == [2]
+    assert out.baseline_level.tolist() == ["category_channel_region"]
+    records.loc[records.sku == "NEW", "launch_units"] = 99999.
+    changed = zero_history_forecast(records, ["NEW"], include_category_baseline=True)
+    assert changed.pred_category_mean.tolist() == [80.]
+
+
+def test_category_mean_fallback_is_recorded(monkeypatch):
+    import models.zero_history as zero
+    monkeypatch.setattr(zero, "fit_predict_lgb", lambda *a, **kw: np.array([1.]))
+    records = toy_records()
+    records.loc[records.sku == "NEW", ["category", "channel", "region"]] = ["Juice", "Online", "South"]
+    out = zero_history_forecast(records, ["NEW"], include_category_baseline=True)
+    assert out.pred_category_mean.tolist() == [70.]
+    assert out.baseline_level.tolist() == ["global"]
+    assert out.baseline_donors.tolist() == [1]
+
+
+def test_seven_day_cutoff_accepts_only_completed_windows(monkeypatch):
+    import models.zero_history as zero
+    monkeypatch.setattr(zero, "fit_predict_lgb", lambda *a, **kw: np.array([1.]))
+    records = toy_records()
+    records.loc[records.sku == "NEW", "week"] = pd.Timestamp("2023-01-11")
+    records.loc[records.sku == "OLD", "label_available_at"] = pd.Timestamp("2023-01-11")
+    out = zero_history_forecast(records, ["NEW"], include_category_baseline=True)
+    assert out.train_rows.tolist() == [1]
+    assert out.train_label_available_max.tolist() == [pd.Timestamp("2023-01-11")]

@@ -85,8 +85,9 @@ Standard data science lifecycle, 16 phases mapped to numbered notebooks in `note
   - No model sees a week it will later be tested on
 - **Promotion effect**: two-way fixed-effects regression (SKU + week/season FE, price-controlled)
   - Not a naive promo-vs-non-promo comparison — promotions are confounded with price and season
-- **Cold start**: validated against real staggered SKU launches
-  - Analog-matching vs. a meta-learner restricted to launch-time-available features
+- **Cold start**: separate conditional pre-launch and short-history experiments on staggered launches in this simulated dataset
+  - Pre-launch uses metadata/calendar only; launch schedules and assortment are inferred retrospectively, not verified plans
+  - [Final study and limitations](reports/phase10/final_summary.md)
 - **Metrics**: WAPE/SMAPE alongside MAE/RMSE
   - MAPE is unstable at low SKU-week volumes
 - **Base-table provenance**: built from raw data by this project's own code, not received pre-aggregated (see Data)
@@ -178,8 +179,11 @@ Forecasting FMCG Daily Sales/
 - [x] **Phase 9 — Seasonality & trend**: STL decomposition per category
   - Seasonal variance share: ~70% (Milk, per-SKU robustness check) to 87% (SnackBar)
   - Milk's naive sum-of-SKUs figure (8%) was a SKU-count-growth artifact, not real trend (see Key Findings below)
-- [x] **Phase 10 — Cold-start forecasting**: compared analog-matching vs. meta-learner vs. full model on 5 held-out new SKUs
-  - Both ML approaches clearly beat analog-matching at every SKU age
+- [x] **Phase 10 — Cold-start study completed within the supplied dataset**: separate pre-launch and short-history protocols
+  - First-seven-day pre-launch evaluation: existing 5 SKUs + 15 chronologically eligible launches; category mean / LightGBM / Analog combined WAPE **30.27% / 32.10% / 35.87%**
+  - LightGBM leads on the 15-SKU extension; the combined SKU-bootstrap interval does not clearly separate category mean from LightGBM
+  - After sales start, age 0–3 Full-core / Meta-core WAPE **27.68% / 27.77%**; these predict a different target and are not directly comparable with pre-launch scores
+  - [Final report, assumptions and reproducibility](reports/phase10/final_summary.md) · [Notebook](notebooks/04_cold_start/10_cold_start.ipynb)
 - [x] **Phase 11 — Feature ablation**: measured the accuracy contribution of every engineered feature
   - Calendar/lifecycle features matter most, ahead of lag/rolling history
   - Price and external enrichment add ~0 incrementally
@@ -239,8 +243,9 @@ readers. `reports/final_report.md` stays in English for a hiring-manager audienc
     - Artifact of Milk's active SKU count growing 2→7 over the window — summing across a growing SKU count inflates apparent trend
   - Per-SKU robustness check (STL on per-SKU mean instead of sum) flips it to ~70% seasonal / 22% trend, in line with other categories
     - Per-SKU mean is noisier when few SKUs are active early in a series — the more credible read for Milk specifically, not a universal replacement for the sum-based numbers
-- **Cold start**: both ML approaches clearly beat naive analog-matching at every SKU age
-  - The full model held up from the first available week
+- **Cold start**: category mean is a practical pre-launch baseline on the supplied simulated data, not a universally superior model
+  - Combined 20-SKU WAPE is 30.27%; the 15-SKU extension favors LightGBM and uncertainty prevents a clear winner between these two
+  - Short-history Full-core is competitive after observed sales become available; verified launch plans and external validation remain unavailable
 - **Feature value**: calendar/lifecycle features matter most, ahead of lag/rolling history; price and external enrichment add close to nothing incrementally
   - This is a predictive-value finding, distinct from promotion's causal effect above
   - Caveat: `avg_temp`/`inflation_index` are synthetic, deterministic stand-ins (see Data), largely redundant with `month`/`is_summer`/`is_winter` already in the model

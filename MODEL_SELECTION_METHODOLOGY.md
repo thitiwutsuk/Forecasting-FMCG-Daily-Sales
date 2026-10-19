@@ -122,24 +122,24 @@ LightGBM ขยับเล็กน้อย และ XGBoost เปลี่�
 
 ## 3. Cold-Start (Phase 10)
 
-### หลักการเลือก
-3 วิธีที่ทดสอบไม่ใช่โมเดลสุ่ม แต่แทน **3 กลยุทธ์รับมือกับข้อมูลไม่มีประวัติ** ที่ต่างกัน:
+แยกสองสถานการณ์ เพราะข้อมูลที่ทราบ ณ วันพยากรณ์และ target ไม่เหมือนกัน:
 
-| วิธี | กลยุทธ์ |
-|---|---|
-| Analog-matching | ยืมพฤติกรรมจากสินค้าที่คล้ายกัน (หมวดหมู่/ราคาใกล้เคียง) — ไม่เรียนรู้อะไรใหม่เลย |
-| Meta-learner | ใช้โมเดลหลักจาก Phase 7 แต่ตัด feature ที่ต้องใช้ประวัติ (lag/rolling) ออก |
-| Full model | โมเดลหลักตัวเต็ม (Phase 7) มี feature ประวัติครบ — ใช้เป็น **เพดานอ้างอิง** |
+| สถานการณ์ | วิธีที่เปรียบเทียบ | ข้อมูล / เป้าหมาย |
+|---|---|---|
+| ก่อนเริ่มขาย | Category mean, Analog ไม่ใช้ราคา, metadata-only LightGBM | ไม่มี target-SKU sales; ทำนาย recorded units 7 วันแรก |
+| หลังเริ่มขาย | Analog, Meta-core, Full-core | เมื่อจบสัปดาห์ปัจจุบัน ทำนายสัปดาห์ถัดไป |
 
-**เหตุผลที่ต้องมี Full model ร่วมด้วย**: เพื่อวัดว่า "ช่องว่างความแม่นยำ" ระหว่างสินค้าใหม่กับสินค้าเก่าใหญ่แค่ไหน
-ไม่ใช่แค่บอกว่าวิธีไหนดีที่สุดในบรรดา 2 วิธีแรก
+Meta-core ตัด lag/rolling แต่ยังใช้ยอดขายสัปดาห์ปัจจุบัน จึงไม่ใช่ zero-history Full-core เพิ่มประวัติเท่าที่มีจริงและไม่ใช่เพดาน accuracy ของ mature SKU; ทั้งคู่ใช้ LightGBM
 
-### วิธีเปรียบเทียบ — ต่างจาก Baseline และ Core Forecasting ตรงนี้
-ไม่ได้ดูแค่ตัวเลขเฉลี่ยตัวเดียว แต่วัด WAPE **แยกตาม "จำนวนสัปดาห์นับจากวันเปิดตัว" (weeks_since_launch)**
-เพราะคำถามที่แท้จริงไม่ใช่ "วิธีไหนดีสุด" แต่คือ **"ความแม่นยำไล่ทันสินค้าเก่าเร็วแค่ไหน"** — ต้องดูเป็นเส้นกราฟตามอายุ
-สินค้า ไม่ใช่ตัวเลขเดียว
+ก่อนเริ่มขาย category mean ใช้หมวด/channel/region เดียวกัน พร้อม fallback ที่บันทึกไว้ Analog เลือกสินค้าต้นแบบจาก metadata โดยไม่ใช้ราคาที่เกิดหลังเปิดตัว ทุกวิธีใช้เฉพาะ launch labels ที่เกิดครบก่อน cutoff
 
-ทดสอบกับ **5 สินค้าที่เปิดตัวช้าสุดจริงในข้อมูล** (ไม่ใช่จำลอง) — real staggered launches จาก daily transaction data
+คง 5 SKU เดิมเป็นชุดอ้างอิง เพิ่ม 15 SKU ที่มีประวัติเปิดตัวก่อนหน้าอย่างน้อย 10 SKU ตามวันและจำนวนเท่านั้น กัน 5 SKU เดิมออกจาก train ทุกครั้ง ไม่ tune บนผลทดสอบ รวม 20 SKU/180 แถว รายงาน extension แยกจากผลรวม
+
+ผลรวม WAPE: Category mean 30.27%, LightGBM 32.10%, Analog 35.87% แต่ LightGBM ต่ำสุดบน extension 15 SKU และ paired SKU-bootstrap ของ Category mean − LightGBM คร่อมศูนย์ จึงใช้ค่าเฉลี่ยเป็น baseline หลัก ไม่อ้าง superiority ทั่วไป
+
+วันเปิดตัวและ assortment อนุมานย้อนหลังจากข้อมูลจำลอง สมมติว่าผู้วางแผนรู้ล่วงหน้า ไม่ใช่ verified launch plan กราฟตามอายุเป็น descriptive ยังไม่ระบุสัปดาห์ที่ตามทัน mature products ได้ และห้ามเทียบคะแนนข้ามสองสถานการณ์ตรง ๆ
+
+ดู protocol, ผลครบ, exploratory uncertainty, ข้อจำกัด และการทำซ้ำใน [รายงานปิดงาน](reports/phase10/final_summary.md)
 
 ---
 
@@ -149,7 +149,7 @@ LightGBM ขยับเล็กน้อย และ XGBoost เปลี่�
 |---|---|---|
 | Baseline | ครอบคลุมสมมติฐานง่ายๆ ที่ต่างกัน 3 แบบ | ตัวเลขเฉลี่ยตัวเดียว (หาเกณฑ์ขั้นต่ำ) |
 | Core Forecasting | แยกทดสอบ pooling × วิธีการ + เช็ค library axis (LightGBM vs XGBoost vs Random Forest vs CatBoost) เพิ่ม | WAPE (CV + final holdout ใน Phase 13) + ความสม่ำเสมอ + feature importance + std dev ราย fold + paired significance test (library axis) |
-| Cold-Start | เทียบกลยุทธ์รับมือข้อมูลขาด 3 แบบ + มีเพดานอ้างอิง | WAPE แยกตามอายุสินค้า ไม่ใช่ค่าเฉลี่ยเดียว |
+| Cold-Start | แยก pre-launch และ short-history พร้อม baseline ที่เรียบง่าย | แถวร่วม/coverage, ผลตาม cohort/อายุ และ exploratory SKU uncertainty |
 
 ## หลักการร่วมที่ใช้ทุก Phase (ไม่เปลี่ยนแปลง)
 

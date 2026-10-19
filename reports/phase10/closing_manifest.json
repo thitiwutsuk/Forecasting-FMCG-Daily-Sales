@@ -1,0 +1,82 @@
+{
+  "protocol": "chronological retrospective robustness extension; no model tuning",
+  "target": "recorded units during [first_seen, first_seen + 7 days)",
+  "schedule_source": "SKU first observation and active combinations in first 7 days inferred retrospectively",
+  "features": [
+    "category",
+    "segment",
+    "brand",
+    "channel",
+    "region",
+    "month",
+    "week_number",
+    "year"
+  ],
+  "held_out_skus": [
+    "YO-024",
+    "MI-008",
+    "SN-028",
+    "YO-018",
+    "SN-030"
+  ],
+  "training_rule": "other non-held-out SKUs whose seven-day label is complete at target first_seen",
+  "input_file": "data/interim/daily_validated.csv",
+  "input_sha256": "f5d878459ce3ceb9966680d47961345b6b9ab56d8dbed8a88bb2b6c3e45a5d5f",
+  "python_version": "3.12.5",
+  "pandas_version": "2.3.3",
+  "lightgbm_version": "4.6.0",
+  "lightgbm_params": {
+    "objective": "regression",
+    "n_estimators": 300,
+    "learning_rate": 0.05,
+    "num_leaves": 31,
+    "min_child_samples": 20,
+    "verbosity": -1,
+    "random_state": 42,
+    "n_jobs": 4,
+    "deterministic": true,
+    "force_row_wise": true
+  },
+  "evaluation_rows": 180,
+  "limitations": [
+    "same simulated dataset; not an independent external test",
+    "launch schedule and assortment inferred retrospectively",
+    "no verified planned price or promotion",
+    "earliest launches excluded by stated minimum-history rule",
+    "sparse daily records not imputed; no production demand guarantee",
+    "bootstrap does not model temporal dependence between fitted training sets"
+  ],
+  "baseline": "mean category/channel/region; fallback category, channel/region, global",
+  "selection_rule": "all non-reserved SKU launches with >=10 completed prior non-reserved SKU launch windows",
+  "reserved_skus_excluded_from_all_training": [
+    "YO-024",
+    "MI-008",
+    "SN-028",
+    "YO-018",
+    "SN-030"
+  ],
+  "extension_skus": [
+    "JU-021",
+    "MI-002",
+    "MI-011",
+    "MI-022",
+    "MI-023",
+    "RE-017",
+    "RE-025",
+    "SN-010",
+    "SN-013",
+    "SN-019",
+    "SN-027",
+    "YO-003",
+    "YO-009",
+    "YO-016",
+    "YO-020"
+  ],
+  "evaluation_skus": 20,
+  "bootstrap": {
+    "unit": "SKU cluster",
+    "repetitions": 2000,
+    "seed": 42,
+    "interval": "paired percentile 95%, conditional on observed SKUs"
+  }
+}

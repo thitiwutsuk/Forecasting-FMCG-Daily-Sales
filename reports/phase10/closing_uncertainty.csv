@@ -1,0 +1,7 @@
+comparison,wape_difference,ci95_low,ci95_high,skus,repetitions,valid_repetitions,seed,cohort
+Category mean minus Analog no-price,-0.0686074442531301,-0.12586237396072883,-0.01001450063440275,5,2000,2000,42,existing_five_skus
+Category mean minus Zero-history LightGBM,-0.0919782977309453,-0.17397171676982157,-0.0031681981197702667,5,2000,2000,42,existing_five_skus
+Category mean minus Analog no-price,-0.05046278172799368,-0.10576585968624917,0.0008474170455169366,15,2000,2000,42,chronological_extension
+Category mean minus Zero-history LightGBM,0.01398214828192148,-0.06705068931253941,0.08953982106924326,15,2000,2000,42,chronological_extension
+Category mean minus Analog no-price,-0.05599551717420112,-0.09659976351170944,-0.017576946782083575,20,2000,2000,42,combined
+Category mean minus Zero-history LightGBM,-0.01832769020304273,-0.08258150502434182,0.048590072434207036,20,2000,2000,42,combined

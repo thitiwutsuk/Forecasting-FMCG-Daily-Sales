@@ -1,0 +1,48 @@
+{
+  "protocol": "conditional retrospective metadata-only prelaunch forecast",
+  "target": "recorded SKU/channel/region units during launch calendar week (may be partial)",
+  "schedule_source": "first observed week and active combinations inferred retrospectively; assumed known",
+  "features": [
+    "category",
+    "segment",
+    "brand",
+    "channel",
+    "region",
+    "month",
+    "week_number",
+    "year"
+  ],
+  "held_out_skus": [
+    "YO-024",
+    "MI-008",
+    "SN-028",
+    "YO-018",
+    "SN-030"
+  ],
+  "training_rule": "other SKUs launch weeks with label_available_at <= target launch Monday",
+  "input_file": "data/interim/daily_validated.csv",
+  "input_sha256": "f5d878459ce3ceb9966680d47961345b6b9ab56d8dbed8a88bb2b6c3e45a5d5f",
+  "python_version": "3.12.5",
+  "pandas_version": "2.3.3",
+  "lightgbm_version": "4.6.0",
+  "lightgbm_params": {
+    "objective": "regression",
+    "n_estimators": 300,
+    "learning_rate": 0.05,
+    "num_leaves": 31,
+    "min_child_samples": 20,
+    "verbosity": -1,
+    "random_state": 42,
+    "n_jobs": 4,
+    "deterministic": true,
+    "force_row_wise": true
+  },
+  "evaluation_rows": 44,
+  "limitations": [
+    "no verified prelaunch schedule or assortment",
+    "no planned price or promotion",
+    "no zero synthesis for absent combinations",
+    "first week length varies",
+    "only five held-out SKUs; no significance test"
+  ]
+}
